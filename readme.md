@@ -2,9 +2,35 @@
 
 The aim of this project is to fetch all the content from a given Confluence space and index the content found within the subheadings in each page of the Space. 
 
+
 The content is output to CSV where it can then be parsed through the OpenAI embeddings model to provide vector scores across all of the contexts.
 
 Once we have an embeddings database of the content, we can then use an embeddings compare search to retrieve the best context for a given question, and use this as the context when submitting a question to the GPT-3 model.
+
+
+## Example use case
+
+Imagine a user posing the question:
+
+```
+Question: Can I still see my completion if I delete my enrolment?
+```
+
+Using the OpenAI embeddings API, we would return the "embedding" for this question and then compare it against the embeddings generated from our knowledge bank (an indexed Confluence Space, e.g. STRM).
+
+In this case, we would find the following answer from our FAQs
+
+> ### What happens to completions if you expire or delete an enrolment?
+> 
+> If you expire all enrolments for a user, then their completions are retained in the LX leaderboards but the user does not count against active users licences.
+> 
+> If you delete all enrolments for a user, then the completions ARE NOT shown on the leaderboard and of course, they do not count as an active user. But if you re-enrol the user, then their completion is resurfaced too.
+```
+
+We would then use this context to generate a better context when querying the GPT3 model:
+
+
+
 
 ## Todo
 
