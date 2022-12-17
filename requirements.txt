@@ -1,0 +1,5 @@
+atlassian==0.0.0
+atlassian_python_api==3.32.1
+beautifulsoup4==4.11.1
+html2text==2020.1.16
+openai==0.25.0

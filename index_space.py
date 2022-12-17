@@ -6,20 +6,33 @@ from atlassian import Confluence
 import openai
 from pprint import pprint
 from bs4 import BeautifulSoup
+import argparse
 
+# Create an ArgumentParser object
+parser = argparse.ArgumentParser()
+
+# Add an argument with a flag and a name
+parser.add_argument("--space", default="STRM", help="Specify the Confluence Space you want to index")
+parser.add_argument("--max_pages", default=1000, help="The maximum amount of Space pages to index")
+
+args = parser.parse_args()
+space = args.space;
 
 # Replace YOUR_API_TOKEN, YOUR_CONFLUENCE_URL, and YOUR_OPENAI_API_KEY with your own values
 confluence = Confluence(url='https://learninglocker.atlassian.net', username=os.environ.get('CONFLUENCE_USERNAME'), password=os.environ.get('CONFLUENCE_API_KEY'))
 
 # Search for all pages in a given space
-results = confluence.get_all_pages_from_space(space="STRM", start=0, limit=1000)
+results = confluence.get_all_pages_from_space(space=space, start=0, limit=args.max_pages)
 
 page_ids = []
 for result in results:
     page_ids.append(result["id"])
 
+dir = 'output/';
+filename = space + '_indexed_content.csv'
+
 # Create a CSV file to store the extracted content
-with open('output/confluence_content.csv', 'w', encoding="utf-8", newline='') as csvfile:
+with open(dir + filename, 'w', encoding="utf-8", newline='') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=['title', 'heading', 'content'])
     writer.writeheader()
 
