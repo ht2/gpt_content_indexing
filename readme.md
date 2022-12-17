@@ -26,7 +26,7 @@ We would then use this context to generate a better context when querying the GP
 
 ## Runtime example
 
-Execute [extract_confluence.py](extract_confluence.py) to generate a CSV of content from the space in `output/`
+Execute [index_space.py](index_space.py) to generate a CSV of content from the space in `output/`
 
 ```bash
 python index_space.py --space="STRM" --max_pages=1000
