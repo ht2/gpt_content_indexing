@@ -18,7 +18,7 @@ parser.add_argument("--max_pages", default=1000, help="The maximum amount of Spa
 args = parser.parse_args()
 space = args.space;
 
-# Replace YOUR_API_TOKEN, YOUR_CONFLUENCE_URL, and YOUR_OPENAI_API_KEY with your own values
+# Connect to Confluence
 confluence = Confluence(url='https://learninglocker.atlassian.net', username=os.environ.get('CONFLUENCE_USERNAME'), password=os.environ.get('CONFLUENCE_API_KEY'))
 
 # Search for all pages in a given space
