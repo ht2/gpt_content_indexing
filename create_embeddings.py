@@ -15,18 +15,15 @@ parser.add_argument("--out", default="embeddings", help="Specify the filename to
 args = parser.parse_args()
 file = args.file;
 
-MODEL_NAME = "curie"
-
-DOC_EMBEDDINGS_MODEL = f"text-search-{MODEL_NAME}-doc-001"
-QUERY_EMBEDDINGS_MODEL = f"text-search-{MODEL_NAME}-query-001"
-
-
 df = pd.read_csv(file)
 df = df.set_index(["title", "heading"])
 print(f"{len(df)} rows in the data.")
 sample = df.sample(5)
 print("Sample (5 rows)", sample)
 
+
+MODEL_NAME = "curie"
+DOC_EMBEDDINGS_MODEL = f"text-search-{MODEL_NAME}-doc-001"
 
 def get_embedding(text: str, model: str) -> list[float]:
     result = openai.Embedding.create(
@@ -37,9 +34,6 @@ def get_embedding(text: str, model: str) -> list[float]:
 
 def get_doc_embedding(text: str) -> list[float]:
     return get_embedding(text, DOC_EMBEDDINGS_MODEL)
-
-def get_query_embedding(text: str) -> list[float]:
-    return get_embedding(text, QUERY_EMBEDDINGS_MODEL)
 
 def compute_doc_embeddings(df: pd.DataFrame) -> dict[tuple[str, str], list[float]]:
     """
