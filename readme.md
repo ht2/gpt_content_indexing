@@ -85,7 +85,10 @@ Instructions on generating a Confluence API token: https://support.atlassian.com
 - [ ] Parse indexed content through embeddings API to generate vectors
   - https://openai.com/blog/new-and-improved-embedding-model/
   - https://beta.openai.com/docs/guides/embeddings
-- [ ] Create script to take input question from user, search indexed content, select most similar content and apply it as context back to GPT3 (davinci?) alongside original question to attempt to answer from knowledge base
+- [ ] Create script to take input question from user and return a useful answer!
+  - Search indexed content using question's embedding and select most similar content
+  - Apply it as context back to GPT3 (davinci?) alongside original question to attempt to answer from knowledge base
+  -
 
 #### Stretch goals
 
