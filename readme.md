@@ -78,11 +78,11 @@ Instructions on generating a Confluence API token: https://support.atlassian.com
 - [x] Index a Confluence Space
   - Parse through all pages within a space
   - Return out all content, stripped of HTML and indexed by heading/subheading
-- [ ] Count tokens in each indexed row of content
+- [x] Count tokens in each indexed row of content
   - Use `tokenizer` from GPT2TokenizerFast ([tokenizers](https://github.com/huggingface/tokenizers))
   - Discard content where too small (<40?)
   - See https://github.com/openai/openai-cookbook/blob/main/examples/fine-tuned_qa/olympics-1-collect-data.ipynb for example
-- [ ] Parse indexed content through embeddings API to generate vectors
+- [x] Parse indexed content through embeddings API to generate vectors
   - https://openai.com/blog/new-and-improved-embedding-model/
   - https://beta.openai.com/docs/guides/embeddings
 - [ ] Create script to take input question from user and return a useful answer!
