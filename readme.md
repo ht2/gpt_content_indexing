@@ -26,15 +26,32 @@ We would then use this context to generate a better context when querying the GP
 
 ## Runtime example
 
-Execute [index_space.py](index_space.py) to generate a CSV of content from the space in `output/`
+
+### Generate CSV of Spaces content
+
+Execute [index_space.py](index_space.py) to generate a CSV of content from the first 10 pages of both STRM and LL spaces in `output/indexed_content.csv`
 
 ```bash
-python index_space.py --space="STRM" --max_pages=1000
+python index_space.py --spaces=STRM LL --max_pages=10 --out my_output
 ```
 
-`--space` is required
+`--spaces` is required
 
-`--max_pages` is not required; defaults to 1000
+`--out` is not required; defaults to `indexed_content`
+
+`--max_pages` is not required; defaults to 1000. Recommend using low numbers for initial testing
+
+### Generate embeddings from output file
+
+Outputs embeddings to a file in `output/embeddings.csv`
+```bash
+python create_embeddings.py --file ./output/indexed_content.csv --out embeddings
+```
+
+--file is not required; defaults to `indexed_content`
+
+--out is not required; defaults to `embeddings`
+
 
 ## Requirements
 
@@ -77,6 +94,23 @@ Instructions on generating a Confluence API token: https://support.atlassian.com
 - Fine tune model rather than just finding and providing context (although this is still a recommended approach)
 - Automate Q&A through Slackbot
 
+
+## Known issues and workarounds
+
+### Can't find Rust compiler
+The transformers module, used to count tokens of content, requires rust to compile.
+
+Solution: Install rust
+
+
+### Resource punkt not found
+See reference issue here: https://github.com/delip/PyTorchNLPBook/issues/14
+
+Solution: Execute this in the Python terminal:
+```python
+import nltk
+nltk.download('punkt')
+```
 
 
 ## References
