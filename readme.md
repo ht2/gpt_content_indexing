@@ -48,9 +48,24 @@ Outputs embeddings to a file in `output/embeddings.csv`
 python create_embeddings.py --file ./output/indexed_content.csv --out embeddings
 ```
 
---file is not required; defaults to `indexed_content`
+`--file` is not required; defaults to `indexed_content`
 
---out is not required; defaults to `embeddings`
+`--out` is not required; defaults to `embeddings`
+
+
+### Ask it a question!
+
+```bash
+python ask_question.py --question ""
+```
+
+`--question` is required
+
+`--file` is not required; defaults to `indexed_content` and loads `./output/indexed_content.csv`
+
+`--embeddings` is not required; defaults to `embeddings` and loads `./output/embeddings.csv`
+
+`--show_prompt` is not required; defaults to False. Shows the full prompt sent to the GPT3 model. Useful for debugging the exact prompt sent.
 
 
 ## Requirements

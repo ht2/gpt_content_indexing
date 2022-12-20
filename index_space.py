@@ -22,6 +22,7 @@ parser.add_argument("--max_pages", default=1000, help="The maximum amount of Spa
 parser.add_argument("--out", default="indexed_content", help="Specify the filename to save the content")
 
 args = parser.parse_args()
+max_pages = args.max_pages
 
 # Connect to Confluence
 confluence = Confluence(url='https://learninglocker.atlassian.net', username=os.environ.get('CONFLUENCE_USERNAME'), password=os.environ.get('CONFLUENCE_API_KEY'))
@@ -52,7 +53,7 @@ def reduce_long(
 
 def extract_sections(
   space: str,
-  limit: int = args.max_pages
+  limit: int = max_pages
 ):
   outputs = []
   ntitles, nheadings, ncontents = [], [], []
@@ -60,10 +61,10 @@ def extract_sections(
   confluence_space = confluence.get_space(space_key=space)
   space_title = confluence_space['name']
 
-  print("Fetching up to " + limit + " pages from '" + space_title + "'...")
+  print(f"Fetching up to {limit} pages from '{space_title}'...")
 
   # Search for all pages in a given space
-  results = confluence.get_all_pages_from_space(space=space, start=0, limit=args.max_pages)
+  results = confluence.get_all_pages_from_space(space=space, start=0, limit=limit)
 
   page_ids = []
   for result in results:
@@ -162,4 +163,4 @@ filename = args.out + '.csv'
 fullpath = dir + filename
 df.to_csv(fullpath, index=False)
 
-print('Done! File saved to ' + fullpath)
+print(f"Done! File saved to {fullpath}")

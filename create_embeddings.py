@@ -60,4 +60,4 @@ dir = './output/';
 filename = args.out + '.csv'
 fullpath = dir + filename
 df.to_csv(fullpath, index=False)
-print("Done! Saved to " + fullpath)
+print(f"Done! Saved to {fullpath}")
