@@ -107,10 +107,10 @@ Instructions on generating a Confluence API token: https://support.atlassian.com
 
 #### Stretch goals
 
-- [-] Index multiple spaces into single embeddings database
-- Index other knowledge sources such as Slack support channels
+- [x] Index multiple spaces into single embeddings database
+- [ ] Index other knowledge sources such as Slack support channels
   - Academy: https://learningpool.zendesk.com/api/v2/help_center/en-us/articles.csv
-- Fine tune model rather than just finding and providing context (although this is still a recommended approach)
+- [ ] Fine tune model rather than just finding and providing context (although this is still a recommended approach)
 
 
 ## Known issues and workarounds
