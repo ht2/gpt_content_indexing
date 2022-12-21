@@ -1,3 +1,8 @@
+import sys
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("ignore")
+
 import pandas as pd
 import argparse
 import numpy as np
@@ -88,13 +93,17 @@ def construct_prompt(question: str, context_embeddings: dict, df: pd.DataFrame) 
         chosen_sections_len += document_section.tokens + separator_len
         if chosen_sections_len > MAX_SECTION_LEN:
             break
+
+        title, heading = section_index
+        content = document_section.content.replace("\n", " ");
             
-        chosen_sections.append(SEPARATOR + document_section.content.replace("\n", " "))
+        chosen_sections.append(f"{SEPARATOR}{title} - {heading} - {content}")
         chosen_sections_indexes.append(str(section_index))
             
     # Useful diagnostic information
-    print(f"Selected {len(chosen_sections)} document sections:")
-    print("\n".join(chosen_sections_indexes))
+    if args.show_prompt:
+        print(f"Selected {len(chosen_sections)} document sections:")
+        print("\n".join(chosen_sections_indexes))
     
     header = """Answer the question as truthfully as possible using the provided context, and if the answer is not contained within the text below, say "I don't know."\n\nContext:\n"""
     
@@ -114,6 +123,7 @@ def answer_query_with_context(
     
     if show_prompt:
         print(prompt)
+        exit()
 
     response = openai.Completion.create(
                 prompt=prompt,
@@ -137,4 +147,5 @@ document_embeddings = load_embeddings(args.embeddings)
 df = pd.read_csv(args.file)
 df = df.set_index(["title", "heading"])
 response = answer_query_with_context(args.question, df, document_embeddings, show_prompt=args.show_prompt)
-print(response)
+print("")
+print(f"Answer: {response}")

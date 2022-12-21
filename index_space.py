@@ -20,6 +20,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--spaces", nargs="*", default=["STRM"], help="Specify the Confluence Space you want to index")
 parser.add_argument("--max_pages", default=1000, help="The maximum amount of Space pages to index")
 parser.add_argument("--out", default="indexed_content", help="Specify the filename to save the content")
+parser.add_argument("--min_tokens", default=20, help="Remove content with less than this number of tokens")
 
 args = parser.parse_args()
 max_pages = args.max_pages
@@ -117,10 +118,11 @@ def extract_sections(
           else:
             full_heading = actual_heading
 
+          title = f"{space_title} - {page_title}"
           # Store the extracted title, heading, content
-          ntitles.append(space_title + " - " + page_title)
+          ntitles.append(title)
           nheadings.append(full_heading)
-          ncontents.append(content)        
+          ncontents.append(f"{title} - {full_heading} - {content}")
           prev_heading = []
         else:
           # Otherwise, we store this heading to append to the next sibling with content
@@ -152,7 +154,7 @@ for space in args.spaces:
 
 # Remove rows with less than 40 tokens
 df = pd.DataFrame(res, columns=["title", "heading", "content", "tokens"])
-df = df[df.tokens>40]
+df = df[df.tokens > args.min_tokens]
 df = df.drop_duplicates(['title','heading'])
 df = df.reset_index().drop('index',axis=1) # reset index
 print(df.head())
