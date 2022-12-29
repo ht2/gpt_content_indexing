@@ -1,6 +1,6 @@
 # Confluence Space indexing & embeddings for Q&A through GPT3
 
-**The aim of this project is to provide a naturally queirable knowledge base using an indexed set of content from Confluence alongside GPT3 models.**
+**The aim of this project is to provide a naturally queryable knowledge base using an indexed set of content from Confluence alongside GPT3 models.**
 
 
 We will accomplish this by fetching all the content from a given Confluence space and indexing the content found within the subheadings in each page of the Space into a CSV. The CSV can then be parsed through the OpenAI embeddings model to provide vector scores across all of the contexts.
