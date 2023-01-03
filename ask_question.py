@@ -18,11 +18,13 @@ parser.add_argument("--question", help="Specify the question you are asking")
 parser.add_argument("--file", default="./output/indexed_content.csv", help="Specify the path to the CSV containing the content")
 parser.add_argument("--embeddings", default="./output/embeddings.csv", help="Specify the path to the embeddings CSV")
 parser.add_argument("--show_prompt", default=False, help="Output the prompt sent to OpenAI")
+parser.add_argument("--allow_hallucinations", default=False, help="Don't restrict answers to be based from the provided context")
+parser.add_argument("--use_fine_tune", default=False, help="Use the fine tuned model")
 args = parser.parse_args()
 
 MODEL_NAME = "curie"
 QUERY_EMBEDDINGS_MODEL = f"text-search-{MODEL_NAME}-query-001"
-COMPLETIONS_MODEL = "text-davinci-003"
+COMPLETIONS_MODEL = "davinci:ft-learning-pool:strm-prompts-2022-12-20-18-07-34" if args.use_fine_tune else "text-davinci-003"
 MAX_SECTION_LEN = 1000
 SEPARATOR = "\n* "
 
@@ -105,7 +107,11 @@ def construct_prompt(question: str, context_embeddings: dict, df: pd.DataFrame) 
         print(f"Selected {len(chosen_sections)} document sections:")
         print("\n".join(chosen_sections_indexes))
     
-    header = """Answer the question as truthfully as possible using the provided context, and if the answer is not contained within the text below, say "I don't know."\n\nContext:\n"""
+    print("allow", args.allow_hallucinations)
+    if args.allow_hallucinations == True:
+        header = """Answer the question as truthfully as possible using the provided context. If the answer is not in the provided context, you may make a best guess using your wider knowledge."\n\nContext:\n"""
+    else:
+        header = """Answer the question as truthfully as possible using the provided context, and if the answer is not contained within the text below, say "I don't know."\n\nContext:\n"""
     
     return header + "".join(chosen_sections) + "\n\n Q: " + question + "\n A:"
 
