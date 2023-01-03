@@ -29,13 +29,15 @@ We would then use this context to generate a better context when querying the GP
 
 ### Generate CSV of Spaces content
 
-Execute [index_space.py](index_space.py) to generate a CSV of content from the first 10 pages of both STRM and LL spaces in `output/indexed_content.csv`
+Execute [index_content.py](index_content.py) to generate a CSV of content from the first 10 pages of both STRM and LL spaces in `output/indexed_content.csv` and all the content from the learningpool.zendesk.com domain
 
 ```bash
-python index_space.py --spaces=STRM LL --max_pages=10 --out my_output
+python index_content.py --spaces=STRM LL --max_pages=10 --zendesk learningpool --out my_output
 ```
 
-`--spaces` is required
+`--spaces` is not required; defaults to `STRM`
+
+`--zendesk` is not required; defaults to `learningpool`
 
 `--out` is not required; defaults to `indexed_content`
 
