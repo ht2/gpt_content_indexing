@@ -1,6 +1,6 @@
 # Confluence Space indexing & embeddings for Q&A through GPT3
 
-**The aim of this project is to provide a naturally queirable knowledge base using an indexed set of content from Confluence alongside GPT3 models.**
+**The aim of this project is to provide a naturally queryable knowledge base using an indexed set of content from Confluence alongside GPT3 models.**
 
 
 We will accomplish this by fetching all the content from a given Confluence space and indexing the content found within the subheadings in each page of the Space into a CSV. The CSV can then be parsed through the OpenAI embeddings model to provide vector scores across all of the contexts.
@@ -100,17 +100,17 @@ Instructions on generating a Confluence API token: https://support.atlassian.com
 - [x] Parse indexed content through embeddings API to generate vectors
   - https://openai.com/blog/new-and-improved-embedding-model/
   - https://beta.openai.com/docs/guides/embeddings
-- [ ] Create script to take input question from user and return a useful answer!
+- [x] Create script to take input question from user and return a useful answer!
   - Search indexed content using question's embedding and select most similar content
   - Apply it as context back to GPT3 (davinci?) alongside original question to attempt to answer from knowledge base
-  -
+- [ ] Create a Slack bot that can take a question, feed it to the script and return the answer
 
 #### Stretch goals
 
-- Index multiple spaces into single embeddings database
-- Index other knowledge sources such as Slack support channels
-- Fine tune model rather than just finding and providing context (although this is still a recommended approach)
-- Automate Q&A through Slackbot
+- [x] Index multiple spaces into single embeddings database
+- [ ] Index other knowledge sources such as Slack support channels
+  - Academy: https://learningpool.zendesk.com/api/v2/help_center/en-us/articles.csv
+- [ ] Fine tune model rather than just finding and providing context (although this is still a recommended approach)
 
 
 ## Known issues and workarounds
