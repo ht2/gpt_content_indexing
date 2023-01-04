@@ -1,9 +1,9 @@
-# Confluence Space indexing & embeddings for Q&A through GPT3
+# Confluence Space and Zendesk Articles indexing & embeddings for Q&A through GPT3
 
-**The aim of this project is to provide a naturally queryable knowledge base using an indexed set of content from Confluence alongside GPT3 models.**
+**The aim of this project is to provide a naturally queryable knowledge base using an indexed set of content from Confluence and Zendesk alongside GPT3 models.**
 
 
-We will accomplish this by fetching all the content from a given Confluence space and indexing the content found within the subheadings in each page of the Space into a CSV. The CSV can then be parsed through the OpenAI embeddings model to provide vector scores across all of the contexts.
+We will accomplish this by fetching all the content from a given Confluence space and Zendesk domain and indexing the content found within the subheadings in each page of the Space/Domain into a CSV. The CSV can then be parsed through the OpenAI embeddings model to provide vector scores across all of the contexts.
 
 Once we have an embeddings database of the content, we can then use an embeddings compare search to retrieve the best context for a given question, and use this as the context when submitting a question to the GPT-3 model. Further work can then be done to allow the script and indexed content to be accessible through interfaces such as Slack.
 
@@ -27,7 +27,7 @@ We would then use this context to generate a better context when querying the GP
 ## Runtime example
 
 
-### Generate CSV of Spaces content
+### Generate CSV of Spaces and Zendessk content
 
 Execute [index_content.py](index_content.py) to generate a CSV of content from the first 10 pages of both STRM and LL spaces in `output/indexed_content.csv` and all the content from the learningpool.zendesk.com domain
 
@@ -110,8 +110,9 @@ Instructions on generating a Confluence API token: https://support.atlassian.com
 #### Stretch goals
 
 - [x] Index multiple spaces into single embeddings database
-- [ ] Index other knowledge sources such as Slack support channels
-  - Academy: https://learningpool.zendesk.com/api/v2/help_center/en-us/articles.csv
+- [ ] Index other knowledge sources
+  - [ ] Slack support channels
+  - [x] Academy: https://learningpool.zendesk.com/api/v2/help_center/en-us/articles.csv
 - [ ] Fine tune model rather than just finding and providing context (although this is still a recommended approach)
 
 
