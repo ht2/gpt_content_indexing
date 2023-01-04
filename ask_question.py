@@ -7,7 +7,7 @@ import pandas as pd
 import argparse
 import numpy as np
 import openai
-import pprint
+from pprint import pprint
 from transformers import GPT2TokenizerFast
 
 # Create an ArgumentParser object
@@ -22,8 +22,10 @@ parser.add_argument("--allow_hallucinations", default=False, help="Don't restric
 parser.add_argument("--use_fine_tune", default=False, help="Use the fine tuned model")
 args = parser.parse_args()
 
-MODEL_NAME = "curie"
-QUERY_EMBEDDINGS_MODEL = f"text-search-{MODEL_NAME}-query-001"
+show_prompt = bool(args.show_prompt)
+allow_hallucinations = bool(args.allow_hallucinations)
+
+QUERY_EMBEDDINGS_MODEL = "text-embedding-ada-002"
 COMPLETIONS_MODEL = "davinci:ft-learning-pool:strm-prompts-2022-12-20-18-07-34" if args.use_fine_tune else "text-davinci-003"
 MAX_SECTION_LEN = 1000
 SEPARATOR = "\n* "
@@ -89,7 +91,7 @@ def construct_prompt(question: str, context_embeddings: dict, df: pd.DataFrame) 
     chosen_sections_indexes = []
      
     for _, section_index in most_relevant_document_sections:
-        # Add contexts until we run out of space.        
+        # Add contexts until we run out of space.
         document_section = df.loc[section_index]
         
         chosen_sections_len += document_section.tokens + separator_len
@@ -98,22 +100,34 @@ def construct_prompt(question: str, context_embeddings: dict, df: pd.DataFrame) 
 
         title, heading = section_index
         content = document_section.content.replace("\n", " ");
+        url = document_section.url;
             
-        chosen_sections.append(f"{SEPARATOR}{title} - {heading} - {content}")
+        chosen_sections.append(f"{SEPARATOR}{title} - {heading} - {content} (URL: {url})")
         chosen_sections_indexes.append(str(section_index))
             
     # Useful diagnostic information
-    if args.show_prompt:
+    if show_prompt:
         print(f"Selected {len(chosen_sections)} document sections:")
         print("\n".join(chosen_sections_indexes))
     
-    print("allow", args.allow_hallucinations)
-    if args.allow_hallucinations == True:
-        header = """Answer the question as truthfully as possible using the provided context. If the answer is not in the provided context, you may make a best guess using your wider knowledge."\n\nContext:\n"""
+
+    if bool(allow_hallucinations) == True:
+        print("Halluncinations are enabled!")
+        header = "Answer the question based on the provided context. If the answer is not in the provided context, you may make a best guess using your wider knowledge."
+        header += "The context provided contains multiple sections of text from a knowledge base and a URL for each. For each section of text (which starts with a \"*\" character), return a unique answer followed by the text 'More info:' followed by the URL. You may return up to three answers, each separated with two line breaks."
     else:
-        header = """Answer the question as truthfully as possible using the provided context, and if the answer is not contained within the text below, say "I don't know."\n\nContext:\n"""
+        header = "Answer the question as truthfully as possible using the provided context. You should use as much detail from the given context as possible when answering the question."
+        header += "If the answer is not contained within the text below, say 'I don't know.' followed by the all the text in the 'Context' section (preceeded by 'Here is the closest information I could find to your question\\n\\n:'). "
+        header += "Within the context are URLs. If an answer if found within a relevant section, return the answer and then three line breaks and then the text 'More info:' followed by the URL."
     
-    return header + "".join(chosen_sections) + "\n\n Q: " + question + "\n A:"
+    header += ""
+
+    header += "\n\nContext:\n"    
+    header += "".join(chosen_sections) + "\n\n"
+    header += "Q: " + question + "\n A:"
+
+    return header
+     
 
 def answer_query_with_context(
     query: str,
@@ -127,9 +141,11 @@ def answer_query_with_context(
         df
     )
     
+    print("\n\n")
     if show_prompt:
         print(prompt)
-        exit()
+    else:
+        print(f"Question: {query}")
 
     response = openai.Completion.create(
                 prompt=prompt,
@@ -141,8 +157,8 @@ def answer_query_with_context(
 
 COMPLETIONS_API_PARAMS = {
     # We use temperature of 0.0 because it gives the most predictable, factual answer.
-    "temperature": 0.0,
-    "max_tokens": 300,
+    "temperature": 1.0 if allow_hallucinations else 0.0,
+    "max_tokens": 600,
     "model": COMPLETIONS_MODEL,
 }
 
@@ -152,6 +168,6 @@ document_embeddings = load_embeddings(args.embeddings)
 
 df = pd.read_csv(args.file)
 df = df.set_index(["title", "heading"])
-response = answer_query_with_context(args.question, df, document_embeddings, show_prompt=args.show_prompt)
+response = answer_query_with_context(args.question, df, document_embeddings, show_prompt=show_prompt)
 print("")
 print(f"Answer: {response}")

@@ -13,6 +13,8 @@ from transformers import GPT2TokenizerFast
 from typing import Tuple
 from nltk.tokenize import sent_tokenize
 
+sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
+
 
 # Create an ArgumentParser object
 parser = argparse.ArgumentParser()
@@ -25,7 +27,7 @@ parser.add_argument("--out", default="indexed_content", help="Specify the filena
 parser.add_argument("--min_tokens", default=20, help="Remove content with less than this number of tokens")
 
 args = parser.parse_args()
-max_pages = args.max_pages
+max_pages = int(args.max_pages)
 
 # Connect to Confluence
 confluence = Confluence(url='https://learninglocker.atlassian.net', username=os.environ.get('CONFLUENCE_USERNAME'), password=os.environ.get('CONFLUENCE_API_KEY'))
@@ -58,9 +60,10 @@ def reduce_long(
 def extract_html_content(
   title_prefix: str,
   page_title: str,
-  html: str
+  html: str,
+  url: str
 ):
-  ntitles, nheadings, ncontents = [], [], []
+  ntitles, nheadings, ncontents, nurls = [], [], [], []
 
   soup = BeautifulSoup(html, 'html.parser')
   headings = soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6"])
@@ -106,18 +109,20 @@ def extract_html_content(
       ntitles.append(title)
       nheadings.append(full_heading)
       ncontents.append(f"{title} - {full_heading} - {content}")
+      nurls.append(url)
       prev_heading = []
     else:
       # Otherwise, we store this heading to append to the next sibling with content
       prev_heading.append(actual_heading)
   
   # Return the 3 arrays of titles, headings and content
-  return (ntitles, nheadings, ncontents)
+  return (ntitles, nheadings, ncontents, nurls)
 
 def count_content_tokens(
   ntitles: list,
   nheadings:list,
-  ncontents: list
+  ncontents: list,
+  nurls: list
 ):
   # count the tokens of each section
   ncontent_ntokens = [
@@ -125,14 +130,15 @@ def count_content_tokens(
       + 4
       + count_tokens(" ".join(t.split(" ")[1:-1])) # Add the tokens from the titles
       + count_tokens(" ".join(h.split(" ")[1:-1])) # Add the tokens from the headings
+      + count_tokens(" ".join(u.split(" ")[1:-1])) # Add the tokens from the url
       - (1 if len(c) == 0 else 0)
-      for t, h, c in zip(ntitles, nheadings, ncontents)
+      for t, h, c, u in zip(ntitles, nheadings, nurls, ncontents)
   ]
   # Create a tuple of (title, section_name, content, number of tokens)
   outputs = []
-  outputs += [(t, h, c, tk) if tk<max_len 
+  outputs += [(t, h, u, c, tk) if tk<max_len 
               else (h, reduce_long(c, max_len), count_tokens(reduce_long(c,max_len))) 
-                  for t, h, c, tk in zip(ntitles, nheadings, ncontents, ncontent_ntokens)]
+                  for t, h, u, c, tk in zip(ntitles, nheadings, nurls, ncontents, ncontent_ntokens)]
   return outputs
 
 
@@ -140,7 +146,7 @@ def extract_sections(
   space: str,
   limit: int = max_pages
 ):
-  ntitles, nheadings, ncontents = [], [], []
+  ntitles, nheadings, ncontents, nurls = [], [], [], []
 
   confluence_space = confluence.get_space(space_key=space)
   space_title = confluence_space['name']
@@ -162,21 +168,27 @@ def extract_sections(
       # Extract the page title and content
       page_title = page['title']
       page_html = page['body']['storage']['value']
+      page_url = page['_links']['base'] + page['_links']['webui'];
       
-      pageTitles, pageHeadings, pageContent = extract_html_content(space_title, page_title, page_html)
+      pageTitles, pageHeadings, pageContent, pageUrls = extract_html_content(space_title, page_title, page_html, page_url)
       ntitles += pageTitles
       nheadings += pageHeadings
       ncontents += pageContent
+      nurls += pageUrls
 
-  return count_content_tokens(ntitles, nheadings, ncontents) 
+  return count_content_tokens(ntitles, nheadings, ncontents, nurls) 
 
 
 def extract_zendesk_domain(
-  zendesk_domain: str
+  zendesk_domain: str,
+  limit: int = max_pages
 ):
-  ntitles, nheadings, ncontents = [], [], []
+  ntitles, nheadings, ncontents, nurls = [], [], [], []
 
+  total_pages = 0;
   URL = f"https://{zendesk_domain}.zendesk.com/api/v2/help_center/en-us"
+  
+  print(f"Fetching up to {limit} pages from 'https://{zendesk_domain}.zendesk.com'...")
 
   # Fetch the Categories from Zendesk
   cat_response = requests.get(URL + '/categories.json')
@@ -191,24 +203,26 @@ def extract_zendesk_domain(
       page_title = section['name']
       
       # Fetch the articles within the section
-      pprint(URL + '/section/' + str(section['id']) + '/articles.json')
       articles_response = requests.get(URL + '/sections/' + str(section['id']) + '/articles.json')
       articles_data = articles_response.json()
 
       for article in articles_data["articles"]:
         page_title += " - " + article['title']
         page_html = article['body']
+        page_url = article['html_url']
 
-        if (page_html is not None):
-          pageTitles, pageHeadings, pageContent = extract_html_content(category_title, page_title, page_html)
+        if (page_html is not None and total_pages < limit ):
+          pageTitles, pageHeadings, pageContent, pageUrls = extract_html_content(category_title, page_title, page_html, page_url)
           ntitles += pageTitles
           nheadings += pageHeadings
           ncontents += pageContent
+          nurls += pageUrls
+          total_pages += 1
       
       if (articles_data['next_page'] is not None):
         pprint('TODO! But have not seen multiple pages yet at this level (due to using sections...)')
   
-  return count_content_tokens(ntitles, nheadings, ncontents)  
+  return count_content_tokens(ntitles, nheadings, ncontents, nurls)  
 
 
 # Define the maximum number of tokens we allow per row
@@ -224,7 +238,7 @@ for domain in args.zendesk:
   res += extract_zendesk_domain(domain)
 
 # Remove rows with less than 40 tokens
-df = pd.DataFrame(res, columns=["title", "heading", "content", "tokens"])
+df = pd.DataFrame(res, columns=["title", "heading", "url", "content", "tokens"])
 df = df[df.tokens > args.min_tokens]
 df = df.drop_duplicates(['title','heading'])
 df = df.reset_index().drop('index',axis=1) # reset index

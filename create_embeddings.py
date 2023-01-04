@@ -21,9 +21,7 @@ print(f"{len(df)} rows in the data.")
 sample = df.sample(5)
 print("Sample (5 rows)", sample)
 
-
-MODEL_NAME = "curie"
-DOC_EMBEDDINGS_MODEL = f"text-search-{MODEL_NAME}-doc-001"
+DOC_EMBEDDINGS_MODEL = "text-embedding-ada-002"
 
 def get_embedding(text: str, model: str) -> list[float]:
     result = openai.Embedding.create(
