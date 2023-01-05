@@ -23,6 +23,20 @@ We would then use this context to generate a better context when querying the GP
 
 ![image](https://user-images.githubusercontent.com/1352590/208269756-da67a4f7-5b7b-4dcb-9f22-d1df4e591f26.png)
 
+### Example running in code
+
+The same question posed through this repo:
+
+```bash
+$ python ask_question.py --allow_hallucinations True --question "Can I still see my completion if I delete my enrolment?"
+
+Question: Can I still see my completion if I delete my enrolment?
+
+Answer: No, if you delete all enrolments for a user, then the completions ARE NOT shown on the leaderboard. More info: https://learninglocker.atlassian.net/wiki/spaces/STRM/pages/1014333441/FAQs
+```
+
+![image](https://user-images.githubusercontent.com/1352590/210773311-16b3a41d-11dc-48a6-9530-5ea0f2306f75.png)
+
 
 ## Runtime example
 
