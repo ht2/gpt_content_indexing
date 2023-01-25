@@ -117,14 +117,14 @@ def construct_prompt(question: str, context_embeddings: dict, df: pd.DataFrame) 
         header += "The context provided contains multiple sections of text from a knowledge base and a URL for each. For each section of text (which starts with a \"*\" character), return a unique answer followed by the text 'More info:' followed by the URL. You may return up to three answers, each separated with two line breaks."
     else:
         header = "Answer the question as truthfully as possible using the provided context. You should use as much detail from the given context as possible when answering the question."
-        header += "If the answer is not contained within the text below, say 'I don't know.' followed by the all the text in the 'Context' section (preceeded by 'Here is the closest information I could find to your question\\n\\n:'). "
+        header += "If the answer is not contained within the text below, say 'I don't know.' followed by the all the text in the 'Context' section, with their respective URLs (preceeded by 'Here is the closest information I could find to your question\\n\\n:'). "
         header += "Within the context are URLs. If an answer if found within a relevant section, return the answer and then three line breaks and then the text 'More info:' followed by the URL."
     
     header += ""
 
     header += "\n\nContext:\n"    
     header += "".join(chosen_sections) + "\n\n"
-    header += "Q: " + question + "\n A:"
+    header += "Q: " + question
 
     return header
      

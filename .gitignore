@@ -1,3 +1,2 @@
-Lib/
-Scripts/
-pyvenv.cfg
+venv/
+ls
