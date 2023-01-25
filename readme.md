@@ -41,7 +41,7 @@ Answer: No, if you delete all enrolments for a user, then the completions ARE NO
 ## Runtime example
 
 
-### Generate CSV of Spaces and Zendessk content
+### Generate CSV of Spaces, Zendesk and custom CSV content
 
 Execute [index_content.py](index_content.py) to generate a CSV of content from the first 10 pages of both STRM and LL spaces in `output/indexed_content.csv` and all the content from the learningpool.zendesk.com domain
 
@@ -56,6 +56,17 @@ python index_content.py --spaces=STRM LL --max_pages=10 --zendesk learningpool -
 `--out` is not required; defaults to `indexed_content`
 
 `--max_pages` is not required; defaults to 1000. Recommend using low numbers for initial testing
+
+
+#### CSV import
+
+For CSVs included in the csv_input directory, they will be iterated over and imported. 
+
+Content can now be imported from files using the following options:
+
+`--csv_input` is not required; defaults to `./input`. Points to a folder to ingest CSVs from. Rows should be in the format 'heading,answers,answers,...'
+
+`--use_csv_dirs` is not required; defaults to False. If True, uses the folder structure (./product/area.csv) to prefill the product and area for imported CSVs. Otherwise prompts for each file found
 
 ### Generate embeddings from output file
 

@@ -26,7 +26,6 @@ show_prompt = bool(args.show_prompt)
 allow_hallucinations = bool(args.allow_hallucinations)
 
 QUERY_EMBEDDINGS_MODEL = "text-embedding-ada-002"
-COMPLETIONS_MODEL = "davinci:ft-learning-pool:strm-prompts-2022-12-20-18-07-34" if args.use_fine_tune else "text-davinci-003"
 MAX_SECTION_LEN = 1000
 SEPARATOR = "\n* "
 
@@ -147,19 +146,28 @@ def answer_query_with_context(
     else:
         print(f"Question: {query}")
 
-    response = openai.Completion.create(
+    token_gen = openai.Completion.create(
                 prompt=prompt,
                 **COMPLETIONS_API_PARAMS
             )
 
-    return response["choices"][0]["text"].strip(" \n")
+    # Stream the response to the user
+    sys.stdout.write('Answer: ')
+    sys.stdout.flush()
+    for token in token_gen:
+        sys.stdout.write(token.choices[0]['text'])
+        sys.stdout.flush()
 
+
+
+COMPLETIONS_MODEL = "davinci:ft-learning-pool:strm-prompts-2022-12-20-18-07-34" if args.use_fine_tune else "text-davinci-003"
 
 COMPLETIONS_API_PARAMS = {
     # We use temperature of 0.0 because it gives the most predictable, factual answer.
     "temperature": 1.0 if allow_hallucinations else 0.0,
     "max_tokens": 600,
     "model": COMPLETIONS_MODEL,
+    "stream": True
 }
 
 
@@ -168,6 +176,5 @@ document_embeddings = load_embeddings(args.embeddings)
 
 df = pd.read_csv(args.file)
 df = df.set_index(["title", "heading"])
-response = answer_query_with_context(args.question, df, document_embeddings, show_prompt=show_prompt)
-print("")
-print(f"Answer: {response}")
+answer_query_with_context(args.question, df, document_embeddings, show_prompt=show_prompt)
+print('')
