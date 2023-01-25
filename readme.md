@@ -57,6 +57,10 @@ python index_content.py --spaces=STRM LL --max_pages=10 --zendesk learningpool -
 
 `--max_pages` is not required; defaults to 1000. Recommend using low numbers for initial testing
 
+`--csv_input` is not required; defaults to `./input`. Points to a folder to ingest CSVs from. Rows should be in the format 'heading,answers,answers,...'
+
+`--use_csv_dirs` is not required; defaults to False. If True, uses the folder structure (./product/area.csv) to prefill the product and area for imported CSVs. Otherwise prompts for each file found
+
 ### Generate embeddings from output file
 
 Outputs embeddings to a file in `output/embeddings.csv`
