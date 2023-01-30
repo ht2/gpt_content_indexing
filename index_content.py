@@ -5,7 +5,12 @@ import html2text
 import sys
 import requests
 from atlassian import Confluence
-import openai
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.pdfpage import PDFPage
+from pdfminer.converter import PDFPageAggregator
+from pdfminer.layout import LAParams, LTTextLineHorizontal, LTTextBoxHorizontal, LTChar
+
+from io import StringIO
 from pprint import pprint
 from bs4 import BeautifulSoup
 import argparse
@@ -25,8 +30,8 @@ parser.add_argument("--zendesk", nargs="*", default=["learningpool"], help="Spec
 parser.add_argument("--max_pages", default=1000, help="The maximum amount of Space pages to index")
 parser.add_argument("--out", default="indexed_content", help="Specify the filename to save the content")
 parser.add_argument("--min_tokens", default=20, help="Remove content with less than this number of tokens")
-parser.add_argument("--csv_input", default="./input", help="Folder to ingest CSVs from. Rows should be in the format 'heading,answers,answers,...'")
-parser.add_argument("--use_csv_dirs", default=False, help="Use the folder structure (./product/area.csv)")
+parser.add_argument("--input", default="./input", help="Folder to ingest CSVs from. Rows should be in the format 'heading,answers,answers,...'")
+parser.add_argument("--use_dirs", default=False, help="Use the folder structure (./product/area.csv)")
 
 args = parser.parse_args()
 max_pages = int(args.max_pages)
@@ -226,30 +231,29 @@ def extract_zendesk_domain(
   
   return count_content_tokens(ntitles, nheadings, ncontents, nurls)
 
-
 def extract_csvfile(subdir, file):
-  if file.endswith(".csv"):
     ntitles, nheadings, ncontents, nurls = [], [], [], []
     csv_filepath = os.path.join(subdir, file)
     print(f"Loading data from {csv_filepath}")
     subdir_name = os.path.basename(subdir)
+    file_name = os.path.splitext(file)[0]
 
-    if args.use_csv_dirs:
+    if args.use_dirs == False:
       product = input(f"Please enter the product NAME for this file (default: {subdir_name}): ")
       if not product:
         product = subdir_name
-      file_name = os.path.splitext(file)[0]
       product_area = input(f"Please enter the product AREA for this file (default: {file_name}): ")
       if not product_area:
-        product_area = filename
+        product_area = file_name
     else:
       product = subdir_name
-      product_area = filename
+      product_area = file_name
+    
+    title = f"{product} - {product_area}"
 
     with open(csv_filepath, 'r', encoding='utf-8') as csv_file:
       csv_reader = csv.reader(csv_file)
       for row in csv_reader:
-        title = f"{product} - {product_area}"
         heading = row[0]
         ntitles.append(title)
         nheadings.append(heading)
@@ -261,6 +265,79 @@ def extract_csvfile(subdir, file):
         nurls.append(file)
     return count_content_tokens(ntitles, nheadings, ncontents, nurls)
 
+
+import PyPDF2
+
+def index_pdf_content(subdir, file):
+    filepath = os.path.join(subdir, file)
+    ntitles, nheadings, ncontents, nurls = [], [], [], []    
+    print(f"Loading data from {filepath}")
+    subdir_name = os.path.basename(subdir)
+    file_name = os.path.splitext(file)[0]
+    if args.use_dirs == False:
+      product = input(f"Please enter the product NAME for this file (default: {subdir_name}): ")
+      if not product:
+        product = subdir_name
+      product_area = input(f"Please enter the product AREA for this file (default: {file_name}): ")
+      if not product_area:
+        product_area = file_name
+    else:
+      product = subdir_name
+      product_area = file_name
+
+    title = f"{product} - {product_area}"
+
+    # open the pdf file
+    with open(filepath, 'rb') as pdf_file:
+        laparams = LAParams()
+        rsrcmgr = PDFResourceManager()
+        device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+        interpreter = PDFPageInterpreter(rsrcmgr, device)
+        pages = PDFPage.get_pages(pdf_file)
+
+        content = {}
+        current_headings = []
+        prev_heading_size = 0
+        for page in pages:
+            interpreter.process_page(page)
+            layout = device.get_result()
+            for element in layout:
+                if isinstance(element, LTTextBoxHorizontal):
+                    for text_line in element:
+                        if isinstance(text_line, LTTextLineHorizontal):
+                            is_heading = False
+                            for char in text_line:
+                                if isinstance(char, LTChar):
+                                    fontsize = char.matrix[3]
+                                    if fontsize > 12:
+                                        is_heading = True
+                                        break
+                            if is_heading:
+                                heading = text_line.get_text().replace('\n', '')
+                                if fontsize == prev_heading_size and len(current_headings) > 0:
+                                    current_headings.pop()
+                                elif fontsize > prev_heading_size:
+                                    current_headings = []
+                                current_headings.append(heading)
+                                prev_heading_size = fontsize
+                                break
+                        
+                    line_text = element.get_text().replace('\n', '')
+                    key = ' - '.join(current_headings)
+                    if key not in content:
+                        content[key] = [line_text]
+                    else:
+                        content[key].append(line_text)
+
+        for heading in content:
+            # pprint(f"adding {heading}")
+            ntitles.append(title)
+            nheadings.append(heading)
+            content_text = " ".join(content[heading])
+            ncontents.append(f"{heading} - {content_text}")
+            nurls.append(f"{file_name} - {heading}")
+
+    return count_content_tokens(ntitles, nheadings, ncontents, nurls)
 
 # Define the maximum number of tokens we allow per row
 max_len = 1500
@@ -276,11 +353,16 @@ for domain in args.zendesk:
   print(f"INDEXING CONTENT FROM ZENDESK: {domain}.zendesk.com")
   res += extract_zendesk_domain(domain)
 
-if os.path.isdir(args.csv_input):
-  for subdir, dirs, files in os.walk(args.csv_input):
+if os.path.isdir(args.input):
+  for subdir, dirs, files in os.walk(args.input):
     for file in files:
-      res += extract_csvfile(subdir, file)
+      if file.endswith(".csv"):
+        res += extract_csvfile(subdir, file)
+      elif file.endswith(".pdf"):
+        res += index_pdf_content(subdir, file)
 
+
+  
 # Remove rows with less than 40 tokens
 df = pd.DataFrame(res, columns=["title", "heading", "url", "content", "tokens"])
 df = df[df.tokens > args.min_tokens]

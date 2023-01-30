@@ -20,6 +20,8 @@ parser.add_argument("--embeddings", default="./output/embeddings.csv", help="Spe
 parser.add_argument("--show_prompt", default=False, help="Output the prompt sent to OpenAI")
 parser.add_argument("--allow_hallucinations", default=False, help="Don't restrict answers to be based from the provided context")
 parser.add_argument("--use_fine_tune", default=False, help="Use the fine tuned model")
+parser.add_argument("--stream", action=argparse.BooleanOptionalAction, help="Stream out the response")
+parser.add_argument("--answer_only", action=argparse.BooleanOptionalAction, help="Stream out the response")
 args = parser.parse_args()
 
 show_prompt = bool(args.show_prompt)
@@ -143,20 +145,24 @@ def answer_query_with_context(
     print("\n\n")
     if show_prompt:
         print(prompt)
-    else:
+    elif(args.answer_only != True):
         print(f"Question: {query}")
 
-    token_gen = openai.Completion.create(
+    response = openai.Completion.create(
                 prompt=prompt,
                 **COMPLETIONS_API_PARAMS
             )
 
     # Stream the response to the user
-    sys.stdout.write('Answer: ')
-    sys.stdout.flush()
-    for token in token_gen:
-        sys.stdout.write(token.choices[0]['text'])
+    if (args.stream == True):
+        sys.stdout.write('Answer: ')
         sys.stdout.flush()
+        for token in response:
+            sys.stdout.write(token.choices[0]['text'])
+            sys.stdout.flush()
+    else:
+        answer = response["choices"][0]["text"].strip(" \n")
+        print(f"Answer: {answer}")
 
 
 
@@ -167,9 +173,8 @@ COMPLETIONS_API_PARAMS = {
     "temperature": 1.0 if allow_hallucinations else 0.0,
     "max_tokens": 600,
     "model": COMPLETIONS_MODEL,
-    "stream": True
+    "stream": args.stream
 }
-
 
 # Fetch the embeddings from the CSV
 document_embeddings = load_embeddings(args.embeddings)
@@ -177,4 +182,4 @@ document_embeddings = load_embeddings(args.embeddings)
 df = pd.read_csv(args.file)
 df = df.set_index(["title", "heading"])
 answer_query_with_context(args.question, df, document_embeddings, show_prompt=show_prompt)
-print('')
+exit()
