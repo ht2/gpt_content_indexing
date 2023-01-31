@@ -29,11 +29,16 @@ pprint("LISTENING FOR MESSAGES...")
 @slack.RTMClient.run_on(event='message')
 def respond_to_message(**payload):
     data = payload['data']
+
+    # Get the user's information from the Slack API
+    user_info = client.users_info(user=data['user'])
     user_question = data['text']
     thread_ts = data.get("ts")
 
     if 'bot_id' not in data and bot_id in data.get('text', ''):
-        pprint(f"Answering {user_question}")
+        # Extract the username from the returned JSON object
+        username = user_info['user']['name']
+        pprint(f"User {username} asks \"{user_question}\"")
         channel_id = data['channel']
 
         # Return the answer back to the Slack channel
@@ -44,14 +49,15 @@ def respond_to_message(**payload):
             thread_ts=thread_ts
         )
         # Call the external Python script
-        result = subprocess.run(["./venv/Scripts/python", "ask_question.py", "--no-stream", "--answer_only", "--file", contentsFile, "--embeddings", embeddingsFile, "--question", user_question], capture_output=True, text=True)
+        result = subprocess.run(["./venv/Scripts/python", "ask_question.py", "--no-stream", "--answer_only", "--dir", contentDir, "--question", user_question], capture_output=True, text=True)
         # Check the return code to see if the script ran successfully
         if result.returncode == 0:
             # Return the output of the script
             response = result.stdout
         else:
             # Return an error message
-            response = "Error: The script failed with return code {}".format(result.returncode)
+            pprint(result)
+            response = "Oops. James seems to have broken something - go easy on him"
 
         # Return the answer back to the Slack channel
         client.chat_postMessage(
