@@ -83,6 +83,9 @@ python create_embeddings.py --file ./output/indexed_content.csv --out embeddings
 
 ### Ask it a question!
 
+`--dir` is not required. It defaults to the ./output/default/ directory.
+Inside here it will look for a contents.csv and embeddings.csv
+
 #### Direct Q&A  mode
 ```bash
 python ask_question.py --question "How much does an elephant weigh?"
@@ -90,12 +93,30 @@ python ask_question.py --question "How much does an elephant weigh?"
 
 Pass in a question using the `--question` flag
 
-`--dir` is not required. It defaults to the ./output/default/ directory.
-Inside here it will look for a contents.csv and embeddings.csv
-
 `--embeddings` is not required; defaults to `embeddings` and loads `./output/embeddings.csv`
 
-`--show_prompt` is not required; defaults to False. Shows the full prompt sent to the GPT3 model. Useful for debugging the exact prompt sent.
+`--show_prompt` can be used to output the full prompt used to answer the question
+
+`--imagine` can be used to provide a looser prompt
+
+`--stream` can be used to stream the output from GPT directly to the terminal in realtime
+
+
+#### Slack listening mode
+
+The script can be configured to listen to all messages mentioning to a Slack bot/user and reply in the thread to the user. It uses the Real Time Messaging (RTM) Slack client to listen to all incoming messages connected to the bot and replies directly to the thread of the message where the bot is @mentioned.
+
+You will need to configure a bot with the `bot` and `chat:wrute:bot` scopes. Note that the `bot` scope is deprecated but is the the recommended approach for RTM clients. More info: https://api.slack.com/rtm
+
+
+Ensure you have the bot's Oauth key configured as `SLACK_BOT_API_KEY` and the bot's ID in `SLACK_BOT_ID`.
+
+To start the script in Slack listening mode, use...
+
+```bash
+python ask_question.py --slack
+```
+
 
 
 ## Requirements
