@@ -1,9 +1,8 @@
-# Confluence Space and Zendesk Articles indexing & embeddings for Q&A through GPT3
+# Content indexing & embeddings for Q&A through GPT3
 
-**The aim of this project is to provide a naturally queryable knowledge base using an indexed set of content from Confluence and Zendesk alongside GPT3 models.**
+**The aim of this project is to provide a naturally queryable knowledge base using an indexed set of content from files, Confluence and Zendesk alongside GPT3 models.**
 
-
-We will accomplish this by fetching all the content from a given Confluence space and Zendesk domain and indexing the content found within the subheadings in each page of the Space/Domain into a CSV. The CSV can then be parsed through the OpenAI embeddings model to provide vector scores across all of the contexts.
+We will accomplish this by fetching all the content from a given directory, Confluence spaces and Zendesk domain and indexing the content found within the subheadings in each page of the Space/Domain into a CSV. The CSV can then be parsed through the OpenAI embeddings model to provide vector scores across all of the contexts.
 
 Once we have an embeddings database of the content, we can then use an embeddings compare search to retrieve the best context for a given question, and use this as the context when submitting a question to the GPT-3 model. Further work can then be done to allow the script and indexed content to be accessible through interfaces such as Slack.
 
@@ -50,14 +49,15 @@ Answer: No, if you delete all enrolments for a user, then the completions ARE NO
 python index_content.py --spaces=STRM LL --max_pages=10 --zendesk learningpool --out ./output/default/contents.csv
 ```
 
-`--spaces` is not required; defaults to `STRM`
+`--spaces` Space separated list of Confluence Spaces to index. Not required; defaults to `STRM`
 
-`--zendesk` is not required; defaults to `learningpool`
+`--zendesk` Configure the zendesk domain to pull content from. Not required; defaults to `learningpool`
 
-`--out` is not required; defaults to `./output/defauilt/contents.csv`
+`--out` specify the output file. Not required; defaults to `./output/defauilt/contents.csv`
 
-`--max_pages` is not required; defaults to 1000. Recommend using low numbers for initial testing
+`--max_pages` Max pages pulled per Confluence space. Not required; defaults to 1000. Recommend using low numbers for initial testing
 
+`--min_tokens` Minimum tokens in a given bit of content before it is excluded. Defaults to 20 (approx 60 characters)
 
 #### CSV import
 
@@ -65,15 +65,15 @@ For CSVs included in the csv_input directory, they will be iterated over and imp
 
 Content can now be imported from files using the following options:
 
-`--csv_input` is not required; defaults to `./input`. Points to a folder to ingest CSVs from. Rows should be in the format 'heading,answers,answers,...'
+`--input` is not required; defaults to `./input`. Points to a folder to ingest CSVs from. Rows should be in the format 'heading,answers,answers,...'
 
-`--use_csv_dirs` is not required; defaults to False. If True, uses the folder structure (./product/area.csv) to prefill the product and area for imported CSVs. Otherwise prompts for each file found
+`--use_csv_dirs` is not required; defaults to False. If True, uses the folder structure (./input/product/area.csv) to prefill the title (e.g. product) and subtitle (e.g. area) for imported CSVs. Otherwise prompts for each file found
 
 ### Generate embeddings from output file
 
 Outputs embeddings to a file in `./default/output/embeddings.csv`
 ```bash
-python create_embeddings.py --file ./output/indexed_content.csv --out embeddings
+python create_embeddings.py --file ./output/default/contents.csv --out ./output/default/embeddings.csv
 ```
 
 `--file` is not required; defaults to `./output/defaults/contents.csv`
@@ -106,6 +106,8 @@ Pass in a question using the `--question` flag
 
 The script can be configured to listen to all messages mentioning to a Slack bot/user and reply in the thread to the user. It uses the Real Time Messaging (RTM) Slack client to listen to all incoming messages connected to the bot and replies directly to the thread of the message where the bot is @mentioned.
 
+![image](https://user-images.githubusercontent.com/1352590/215913846-78bce62e-7d05-4eb4-ab7b-7f9022f955cc.png)
+
 You will need to configure a bot with the `bot` and `chat:wrute:bot` scopes. Note that the `bot` scope is deprecated but is the the recommended approach for RTM clients. More info: https://api.slack.com/rtm
 
 
@@ -116,7 +118,13 @@ To start the script in Slack listening mode, use...
 ```bash
 python ask_question.py --slack
 ```
+![image](https://user-images.githubusercontent.com/1352590/215914960-5ff85070-2af2-4243-ba9a-6d01117efa9d.png)
 
+The user may add additional comands to their question in Slack:
+
+`[--show_prompt]`: Returns the full prompt to the user
+
+`[--imagine]`: Enables the hallucination mode (looser prompts)
 
 
 ## Requirements
@@ -154,7 +162,10 @@ Instructions on generating a Confluence API token: https://support.atlassian.com
 - [x] Create script to take input question from user and return a useful answer!
   - Search indexed content using question's embedding and select most similar content
   - Apply it as context back to GPT3 (davinci?) alongside original question to attempt to answer from knowledge base
-- [ ] Create a Slack bot that can take a question, feed it to the script and return the answer
+- [x] Create a Slack bot that can take a question, feed it to the script and return the answer
+  - [ ] Rewrite the Slack bot to a more modern protocol (e.g websocket)
+  - [ ] Provide an endpoint version for AWS Lambda/API Gateway
+- [ ] Utilise a Vector Database
 
 #### Stretch goals
 
@@ -162,6 +173,8 @@ Instructions on generating a Confluence API token: https://support.atlassian.com
 - [ ] Index other knowledge sources
   - [ ] Slack support channels
   - [x] Academy: https://learningpool.zendesk.com/api/v2/help_center/en-us/articles.csv
+  - [x] CSV
+  - [x] PDF
 - [ ] Fine tune model rather than just finding and providing context (although this is still a recommended approach)
 
 
