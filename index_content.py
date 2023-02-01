@@ -32,9 +32,11 @@ parser.add_argument("--out", default="./output/default/contents.csv", help="Spec
 parser.add_argument("--min_tokens", default=20, help="Remove content with less than this number of tokens")
 parser.add_argument("--input", default="./input", help="Folder to ingest CSVs from. Rows should be in the format 'heading,answers,answers,...'")
 parser.add_argument("--use_dirs", default=False, help="Use the folder structure (./product/area.csv)")
+parser.add_argument("--pdf_content_fontsize", default=12, help="Content greater than this fontsize will be considered as a header")
 
 args = parser.parse_args()
 max_pages = int(args.max_pages)
+pdf_content_fontsize = int(args.pdf_content_fontsize)
 
 # Connect to Confluence
 confluence = Confluence(url='https://learninglocker.atlassian.net', username=os.environ.get('CONFLUENCE_USERNAME'), password=os.environ.get('CONFLUENCE_API_KEY'))
@@ -309,7 +311,7 @@ def index_pdf_content(subdir, file):
                             for char in text_line:
                                 if isinstance(char, LTChar):
                                     fontsize = char.matrix[3]
-                                    if fontsize > 12:
+                                    if fontsize > pdf_content_fontsize:
                                         is_heading = True
                                         break
                             if is_heading:
