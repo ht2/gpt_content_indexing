@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--spaces", nargs="*", default=["STRM"], help="Specify the Confluence Space you want to index")
 parser.add_argument("--zendesk", nargs="*", default=["learningpool"], help="Specify the Zendesk domains you want to index")
 parser.add_argument("--max_pages", default=1000, help="The maximum amount of Space pages to index")
-parser.add_argument("--out", default="indexed_content", help="Specify the filename to save the content")
+parser.add_argument("--out", default="./output/default/contents.csv", help="Specify the filename to save the content")
 parser.add_argument("--min_tokens", default=20, help="Remove content with less than this number of tokens")
 parser.add_argument("--input", default="./input", help="Folder to ingest CSVs from. Rows should be in the format 'heading,answers,answers,...'")
 parser.add_argument("--use_dirs", default=False, help="Use the folder structure (./product/area.csv)")
@@ -371,9 +371,5 @@ df = df.reset_index().drop('index',axis=1) # reset index
 print(df.head())
 
 # Store the content to a CSV
-dir = 'output/';
-filename = args.out + '.csv'
-fullpath = dir + filename
-df.to_csv(fullpath, index=False)
-
-print(f"Done! File saved to {fullpath}")
+df.to_csv(args.out, index=False)
+print(f"Done! File saved to {args.out}")

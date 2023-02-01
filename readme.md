@@ -43,17 +43,18 @@ Answer: No, if you delete all enrolments for a user, then the completions ARE NO
 
 ### Generate CSV of Spaces, Zendesk and custom CSV content
 
-Execute [index_content.py](index_content.py) to generate a CSV of content from the first 10 pages of both STRM and LL spaces in `output/indexed_content.csv` and all the content from the learningpool.zendesk.com domain
+#### Example:
+> Execute [index_content.py](index_content.py) to generate a CSV of content from the first 10 pages of both STRM and LL spaces in `./defaults/output/contents.csv` and all the content from the learningpool.zendesk.com domain
 
 ```bash
-python index_content.py --spaces=STRM LL --max_pages=10 --zendesk learningpool --out my_output
+python index_content.py --spaces=STRM LL --max_pages=10 --zendesk learningpool --out ./output/default/contents.csv
 ```
 
 `--spaces` is not required; defaults to `STRM`
 
 `--zendesk` is not required; defaults to `learningpool`
 
-`--out` is not required; defaults to `indexed_content`
+`--out` is not required; defaults to `./output/defauilt/contents.csv`
 
 `--max_pages` is not required; defaults to 1000. Recommend using low numbers for initial testing
 
@@ -70,25 +71,27 @@ Content can now be imported from files using the following options:
 
 ### Generate embeddings from output file
 
-Outputs embeddings to a file in `output/embeddings.csv`
+Outputs embeddings to a file in `./default/output/embeddings.csv`
 ```bash
 python create_embeddings.py --file ./output/indexed_content.csv --out embeddings
 ```
 
-`--file` is not required; defaults to `indexed_content`
+`--file` is not required; defaults to `./output/defaults/contents.csv`
 
-`--out` is not required; defaults to `embeddings`
+`--out` is not required; defaults to `./output/default/embeddings.csv`
 
 
 ### Ask it a question!
 
+#### Direct Q&A  mode
 ```bash
-python ask_question.py --question ""
+python ask_question.py --question "How much does an elephant weigh?"
 ```
 
-`--question` is required
+Pass in a question using the `--question` flag
 
-`--file` is not required; defaults to `indexed_content` and loads `./output/indexed_content.csv`
+`--dir` is not required. It defaults to the ./output/default/ directory.
+Inside here it will look for a contents.csv and embeddings.csv
 
 `--embeddings` is not required; defaults to `embeddings` and loads `./output/embeddings.csv`
 
