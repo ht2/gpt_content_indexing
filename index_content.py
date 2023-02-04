@@ -4,6 +4,7 @@ import csv
 import html2text
 import sys
 import requests
+import uuid
 from atlassian import Confluence
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage
@@ -31,7 +32,7 @@ parser.add_argument("--max_pages", default=1000, help="The maximum amount of Spa
 parser.add_argument("--out", default="./output/default/contents.csv", help="Specify the filename to save the content")
 parser.add_argument("--min_tokens", default=20, help="Remove content with less than this number of tokens")
 parser.add_argument("--input", default="./input", help="Folder to ingest CSVs from. Rows should be in the format 'heading,answers,answers,...'")
-parser.add_argument("--use_dirs", default=False, help="Use the folder structure (./product/area.csv)")
+parser.add_argument("--use_dirs", action=argparse.BooleanOptionalAction, help="Use the folder structure (./product/area.csv)")
 parser.add_argument("--pdf_content_fontsize", default=12, help="Content greater than this fontsize will be considered as a header")
 
 args = parser.parse_args()
@@ -236,9 +237,10 @@ def extract_zendesk_domain(
 def extract_csvfile(subdir, file):
     ntitles, nheadings, ncontents, nurls = [], [], [], []
     csv_filepath = os.path.join(subdir, file)
-    print(f"Loading data from {csv_filepath}")
     subdir_name = os.path.basename(subdir)
     file_name = os.path.splitext(file)[0]
+    
+    print(f"Loading data from {csv_filepath}, subdir: {subdir_name}")
 
     if args.use_dirs == False:
       product = input(f"Please enter the product NAME for this file (default: {subdir_name}): ")
@@ -256,15 +258,27 @@ def extract_csvfile(subdir, file):
     with open(csv_filepath, 'r', encoding='utf-8') as csv_file:
       csv_reader = csv.reader(csv_file)
       for row in csv_reader:
-        heading = row[0]
-        ntitles.append(title)
-        nheadings.append(heading)
-        content = f"{title} - {heading} - {row[1]}"
-        for i in range(2, len(row)):
-          if row[i]:
-            content += ' ' + row[i]
-        ncontents.append(content)
-        nurls.append(file)
+        if row:
+          row_uuid = str(uuid.uuid4())
+          content = ""
+          if row[0]:
+            content += f"{row[0]} -"
+          if len(row) > 1 and row[1]:
+            content += row[1]
+          for i in range(2, len(row)):
+            if row[i]:
+              content += ' ' + row[i]
+          
+          # If the content is empty, move on
+          if (len(content) > 0):
+            content = f"{title} - {content}"
+          else:
+            continue
+          
+          ntitles.append(title)
+          nheadings.append(row_uuid)
+          ncontents.append(content)
+          nurls.append(file)
     return count_content_tokens(ntitles, nheadings, ncontents, nurls)
 
 
