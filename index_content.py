@@ -73,7 +73,7 @@ def extract_html_content(
   html: str,
   url: str
 ):
-  ntitles, nheadings, ncontents, nurls = [], [], [], []
+  nuuids, ncontents, nurls = [], [], []
 
   soup = BeautifulSoup(html, 'html.parser')
   headings = soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6"])
@@ -116,8 +116,8 @@ def extract_html_content(
 
       title = f"{title_prefix} - {page_title}"
       # Store the extracted title, heading, content
-      ntitles.append(title)
-      nheadings.append(full_heading)
+      row_uuid = str(uuid.uuid4())
+      nuuids.append(row_uuid)
       ncontents.append(f"{title} - {full_heading} - {content}")
       nurls.append(url)
       prev_heading = []
@@ -126,11 +126,10 @@ def extract_html_content(
       prev_heading.append(actual_heading)
   
   # Return the 3 arrays of titles, headings and content
-  return (ntitles, nheadings, ncontents, nurls)
+  return (nuuids, ncontents, nurls)
 
 def count_content_tokens(
-  ntitles: list,
-  nheadings:list,
+  nuuids:list,
   ncontents: list,
   nurls: list
 ):
@@ -138,17 +137,16 @@ def count_content_tokens(
   ncontent_ntokens = [
       count_tokens(c) # Add the tokens from the content
       + 4
-      + count_tokens(" ".join(t.split(" ")[1:-1])) # Add the tokens from the titles
-      + count_tokens(" ".join(h.split(" ")[1:-1])) # Add the tokens from the headings
+      + count_tokens(" ".join(id.split(" ")[1:-1])) # Add the tokens from the headings
       + count_tokens(" ".join(u.split(" ")[1:-1])) # Add the tokens from the url
       - (1 if len(c) == 0 else 0)
-      for t, h, c, u in zip(ntitles, nheadings, nurls, ncontents)
+      for id, c, u in zip(nuuids, nurls, ncontents)
   ]
   # Create a tuple of (title, section_name, content, number of tokens)
   outputs = []
-  outputs += [(t, h, u, c, tk) if tk<max_len 
-              else (h, reduce_long(c, max_len), count_tokens(reduce_long(c,max_len))) 
-                  for t, h, u, c, tk in zip(ntitles, nheadings, nurls, ncontents, ncontent_ntokens)]
+  outputs += [(id, u, c, tk) if tk<max_len 
+              else (id, reduce_long(c, max_len), count_tokens(reduce_long(c,max_len))) 
+                  for id, u, c, tk in zip(nuuids, nurls, ncontents, ncontent_ntokens)]
   return outputs
 
 
@@ -156,7 +154,7 @@ def extract_sections(
   space: str,
   limit: int = max_pages
 ):
-  ntitles, nheadings, ncontents, nurls = [], [], [], []
+  nuuids, ncontents, nurls = [], [], []
 
   confluence_space = confluence.get_space(space_key=space)
   space_title = confluence_space['name']
@@ -180,20 +178,19 @@ def extract_sections(
       page_html = page['body']['storage']['value']
       page_url = page['_links']['base'] + page['_links']['webui'];
       
-      pageTitles, pageHeadings, pageContent, pageUrls = extract_html_content(space_title, page_title, page_html, page_url)
-      ntitles += pageTitles
-      nheadings += pageHeadings
+      pageIds, pageContent, pageUrls = extract_html_content(space_title, page_title, page_html, page_url)
+      nuuids += pageIds
       ncontents += pageContent
       nurls += pageUrls
 
-  return count_content_tokens(ntitles, nheadings, ncontents, nurls) 
+  return count_content_tokens(nuuids, ncontents, nurls) 
 
 
 def extract_zendesk_domain(
   zendesk_domain: str,
   limit: int = max_pages
 ):
-  ntitles, nheadings, ncontents, nurls = [], [], [], []
+  nuuids, ncontents, nurls = [], [], []
 
   total_pages = 0;
   URL = f"https://{zendesk_domain}.zendesk.com/api/v2/help_center/en-us"
@@ -222,9 +219,8 @@ def extract_zendesk_domain(
         page_url = article['html_url']
 
         if (page_html is not None and total_pages < limit ):
-          pageTitles, pageHeadings, pageContent, pageUrls = extract_html_content(category_title, page_title, page_html, page_url)
-          ntitles += pageTitles
-          nheadings += pageHeadings
+          pageIds, pageContent, pageUrls = extract_html_content(category_title, page_title, page_html, page_url)
+          nuuids += pageIds
           ncontents += pageContent
           nurls += pageUrls
           total_pages += 1
@@ -232,10 +228,10 @@ def extract_zendesk_domain(
       if (articles_data['next_page'] is not None):
         pprint('TODO! But have not seen multiple pages yet at this level (due to using sections...)')
   
-  return count_content_tokens(ntitles, nheadings, ncontents, nurls)
+  return count_content_tokens(nuuids, ncontents, nurls)
 
 def extract_csvfile(subdir, file):
-    ntitles, nheadings, ncontents, nurls = [], [], [], []
+    nuuids, ncontents, nurls = [], [], []
     csv_filepath = os.path.join(subdir, file)
     subdir_name = os.path.basename(subdir)
     file_name = os.path.splitext(file)[0]
@@ -275,18 +271,17 @@ def extract_csvfile(subdir, file):
           else:
             continue
           
-          ntitles.append(title)
-          nheadings.append(row_uuid)
+          nuuids.append(row_uuid)
           ncontents.append(content)
           nurls.append(file)
-    return count_content_tokens(ntitles, nheadings, ncontents, nurls)
+    return count_content_tokens(nuuids, ncontents, nurls)
 
 
 import PyPDF2
 
 def index_pdf_content(subdir, file):
     filepath = os.path.join(subdir, file)
-    ntitles, nheadings, ncontents, nurls = [], [], [], []    
+    nuuids, ncontents, nurls = [], [], []    
     print(f"Loading data from {filepath}")
     subdir_name = os.path.basename(subdir)
     file_name = os.path.splitext(file)[0]
@@ -346,14 +341,13 @@ def index_pdf_content(subdir, file):
                         content[key].append(line_text)
 
         for heading in content:
-            # pprint(f"adding {heading}")
-            ntitles.append(title)
-            nheadings.append(heading)
+            row_uuid = str(uuid.uuid4())
+            nuuids.append(row_uuid)
             content_text = " ".join(content[heading])
             ncontents.append(f"{heading} - {content_text}")
             nurls.append(f"{file_name} - {heading}")
 
-    return count_content_tokens(ntitles, nheadings, ncontents, nurls)
+    return count_content_tokens(nuuids, ncontents, nurls)
 
 # Define the maximum number of tokens we allow per row
 max_len = 1500
@@ -380,9 +374,9 @@ if os.path.isdir(args.input):
 
   
 # Remove rows with less than 40 tokens
-df = pd.DataFrame(res, columns=["title", "heading", "url", "content", "tokens"])
+df = pd.DataFrame(res, columns=["id", "url", "content", "tokens"])
 df = df[df.tokens > args.min_tokens]
-df = df.drop_duplicates(['title','heading'])
+df = df.drop_duplicates(['id'])
 df = df.reset_index().drop('index',axis=1) # reset index
 print(df.head())
 

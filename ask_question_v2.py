@@ -1,15 +1,13 @@
-import sys
-if not sys.warnoptions:
-    import warnings
-    warnings.simplefilter("ignore")
-
-import os
-import slack
-import time
-import pandas as pd
 import argparse
+import os
+import pandas as pd
 import numpy as np
 import openai
+import pinecone
+from pprint import pprint
+import slack
+import sys
+import time
 from transformers import GPT2TokenizerFast
 
 # Create an ArgumentParser object
@@ -21,21 +19,23 @@ parser.add_argument("--slack", action=argparse.BooleanOptionalAction, help="List
 parser.add_argument("--dir", default="./output/default/", help="Specify the directory containing the contents.csv and embeddings.csv")
 parser.add_argument("--show_prompt", action=argparse.BooleanOptionalAction, help="Output the prompt sent to OpenAI")
 parser.add_argument("--imagine", action=argparse.BooleanOptionalAction, help="Don't restrict answers to be based from the provided context")
-parser.add_argument("--use_fine_tune", action=argparse.BooleanOptionalAction, help="Use the fine tuned model")
+parser.add_argument("--custom_model", default=False, help="Use the fine tuned model")
 parser.add_argument("--stream", action=argparse.BooleanOptionalAction, help="Stream out the response")
 parser.add_argument("--custom_prompt", default=False, help="Inject a custom prompt infront of the context")
+
+parser.add_argument("--embedding_type", default="csv", choices=["csv", "pinecone"], help="Format to save embeddings in")
+parser.add_argument("--pinecone_index", default="default", help="Pinecone Index")
+parser.add_argument("--pinecone_namespace", default="content", help="Pinecone Namespace")
 args = parser.parse_args()
 
-QUESTION_EMBEDDINGS_MODEL = "text-embedding-ada-002"
+COMPLETIONS_MODEL = args.custom_model if args.custom_model else "text-davinci-003"
+EMBEDDINGS_MODEL = "text-embedding-ada-002"
+PINECONE_REGION="us-east1-gcp"
 MAX_SECTION_LEN = 1000
 SEPARATOR = "\n* "
 
-COMPLETIONS_MODEL = "davinci:ft-learning-pool:strm-prompts-2022-12-20-18-07-34" if args.use_fine_tune else "text-davinci-003"
-
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 separator_len = len(tokenizer.tokenize(SEPARATOR))
-
-
 
 def get_embedding(text: str, model: str) -> list[float]:
     result = openai.Embedding.create(
@@ -45,21 +45,21 @@ def get_embedding(text: str, model: str) -> list[float]:
     return result["data"][0]["embedding"]
 
 def get_question_embedding(text: str) -> list[float]:
-    return get_embedding(text, QUESTION_EMBEDDINGS_MODEL)
+    return get_embedding(text, EMBEDDINGS_MODEL)
 
-def load_embeddings(filename: str) -> dict[tuple[str, str], list[float]]:
+def load_embeddings(filename: str) -> dict[tuple[str], list[float]]:
     """
     Read the document embeddings and their keys from a CSV.
     
     filename is the path to a CSV with exactly these named columns: 
-        "title", "heading", "0", "1", ... up to the length of the embedding vectors.
+        "id", "0", "1", ... up to the length of the embedding vectors.
     """
     
     print(f"Loading embeddings from {filename}")
     df = pd.read_csv(filename, header=0)
-    max_dim = max([int(c) for c in df.columns if c != "title" and c != "heading"])
+    max_dim = max([int(c) for c in df.columns if c != "id"])
     return {
-           (r.title, r.heading): [r[str(i)] for i in range(max_dim + 1)] for _, r in df.iterrows()
+           (r.id): [r[str(i)] for i in range(max_dim + 1)] for _, r in df.iterrows()
     }
 
 def vector_similarity(x: list[float], y: list[float]) -> float:
@@ -69,7 +69,27 @@ def vector_similarity(x: list[float], y: list[float]) -> float:
     """
     return np.dot(np.array(x), np.array(y))
 
-def order_document_sections_by_question_similarity(question: str, contexts: dict[(str, str), np.array]) -> list[(float, (str, str))]:
+def get_similarities_from_dict(content_embeddings:dict[(str, str), np.array], question_embedding: list[float]):
+      document_similarities = sorted([
+          (vector_similarity(question_embedding, doc_embedding), doc_index) for doc_index, doc_embedding in content_embeddings.items()
+      ], reverse=True)
+
+      pprint(document_similarities)
+      
+      return document_similarities
+
+def get_similarities_from_pinecone(index: pinecone.Index, question_embedding: list[float]):
+    results = index.query(
+      vector=question_embedding,
+      top_k=6,
+      namespace=args.pinecone_namespace,
+      include_values=False
+    )
+    document_similarities = [(match['score'], match['id']) for match in results['matches']]
+    pprint(document_similarities)
+    return document_similarities
+
+def order_document_sections_by_question_similarity(question: str, embedding_type: str, content_embeddings) -> list[(float, (str, str))]:
     """
     Find the question embedding for the supplied question, and compare it against all of the pre-calculated document embeddings
     to find the most relevant sections. 
@@ -78,17 +98,22 @@ def order_document_sections_by_question_similarity(question: str, contexts: dict
     """
     question_embedding = get_question_embedding(question)
     
-    document_similarities = sorted([
-        (vector_similarity(question_embedding, doc_embedding), doc_index) for doc_index, doc_embedding in contexts.items()
-    ], reverse=True)
-    
-    return document_similarities
+    if embedding_type == "csv":
+      return get_similarities_from_dict(content_embeddings, question_embedding)
+    elif embedding_type == "pinecone":
+      return get_similarities_from_pinecone(index = content_embeddings, question_embedding=question_embedding)
 
-def construct_prompt(question: str, context_embeddings: dict, df: pd.DataFrame, imagine: bool) -> str:
+def construct_prompt(
+  question: str,
+  embedding_type,
+  content_embeddings,
+  df: pd.DataFrame,
+  imagine: bool
+  ) -> str:
     """
     Fetch relevant 
     """
-    most_relevant_document_sections = order_document_sections_by_question_similarity(question, context_embeddings)
+    most_relevant_document_sections = order_document_sections_by_question_similarity(question, embedding_type, content_embeddings)
     
     chosen_sections = []
     chosen_sections_len = 0
@@ -102,11 +127,11 @@ def construct_prompt(question: str, context_embeddings: dict, df: pd.DataFrame, 
         if chosen_sections_len > MAX_SECTION_LEN:
             break
 
-        title, heading = section_index
+        id = section_index
         content = document_section.content.replace("\n", " ");
         url = document_section.url;
             
-        chosen_sections.append(f"{SEPARATOR}{title} - {heading} - {content} (URL: {url})")
+        chosen_sections.append(f"{SEPARATOR}{id} - {content} (URL: {url})")
         chosen_sections_indexes.append(str(section_index))
             
     # Useful diagnostic information
@@ -137,7 +162,8 @@ def construct_prompt(question: str, context_embeddings: dict, df: pd.DataFrame, 
 def answer_question_with_context(
     question: str,
     df: pd.DataFrame,
-    document_embeddings: dict[(str, str), np.array],
+    embedding_type: str,
+    content_embeddings,
     show_prompt: bool = False,
     print_question: bool = True,
     return_answer: bool = False,
@@ -145,10 +171,11 @@ def answer_question_with_context(
 ) -> str:
     answer = ""
     prompt = construct_prompt(
-        question=question,
-        context_embeddings=document_embeddings,
-        df=df,
-        imagine=imagine
+        question,
+        embedding_type,
+        content_embeddings,
+        df,
+        imagine
     )
     
     if show_prompt:
@@ -187,20 +214,33 @@ def answer_question_with_context(
 def main():
     contentDir = args.dir.rstrip("/")
     contentsFile = f"{contentDir}/contents.csv"
-    embeddingsFile = f"{contentDir}/embeddings.csv"
 
-    if not os.path.exists(contentsFile) or not os.path.exists(embeddingsFile):
-        print("Error: Both contents.csv and embeddings.csv must exist in the provided directory")
+    if not os.path.exists(contentsFile):
+        print("Error: contents.csv must exist in the provided directory")
         sys.exit()
 
-    start_time = time.time()
-    # Fetch the embeddings from the CSV
-    document_embeddings = load_embeddings(embeddingsFile)
-    load_time = time.time() - start_time
-    print(f"Embeddings loaded in {round(load_time,2)} seconds")
-
     df = pd.read_csv(contentsFile)
-    df = df.set_index(["title", "heading"])
+    df = df.set_index(["id"])
+
+    embedding_type = args.embedding_type
+    if embedding_type == "csv":
+      # File based embeddings - note these load into memory and can be slow
+      embeddingsFile = f"{contentDir}/embeddings.csv"
+      print(f"Loading embeddings from {embeddingsFile}...")
+
+      if not os.path.exists(contentsFile) or not os.path.exists(embeddingsFile):
+          print("Error: embeddings.csv must exist in the provided directory")
+          sys.exit()
+
+      start_time = time.time()
+      # Fetch the embeddings from the CSV
+      content_embeddings = load_embeddings(embeddingsFile)
+      load_time = time.time() - start_time
+      print(f"Embeddings loaded in {round(load_time,2)} seconds")
+    elif embedding_type == "pinecone":
+      # Use a Pinecone index
+      pinecone.init(api_key=os.environ.get('PINECONE_API_KEY'), environment=PINECONE_REGION)
+      content_embeddings = pinecone.Index(args.pinecone_index)
 
     # If we are looking to listen for Slack...
     if (args.slack):    
@@ -247,18 +287,16 @@ def main():
                 )
 
                 start_time = time.time()
-                print('answering...')
                 answer = answer_question_with_context(
                     question=user_question,
                     df=df,
-                    document_embeddings=document_embeddings,
+                    embedding_type=embedding_type,
+                    content_embeddings=content_embeddings,
                     show_prompt=show_prompt,
                     print_question=False,
                     return_answer=True,
                     imagine=imagine
                 )
-                print('done?')
-                print(answer)
 
                 # Return the answer back to the Slack channel
                 client.chat_postMessage(
@@ -278,7 +316,8 @@ def main():
         answer_question_with_context(
             question=args.question,
             df=df,
-            document_embeddings=document_embeddings,
+            embedding_type=embedding_type,
+            content_embeddings=content_embeddings,
             show_prompt=args.show_prompt,
             print_question=True,
             return_answer=False,
