@@ -271,7 +271,7 @@ def main():
                     imagine = args.imagine or '[--imagine]' in data.get('text', '')
                     show_prompt = args.show_prompt or '[--show_prompt]' in data.get('text', '')
                     
-                    holding_message = "Let me look that up for you! This might take a second..."
+                    holding_message = "Let me look that up for you! This might take a few seconds..."
                     if imagine:
                         holding_message += " (Imagine mode enabled!)"
                     if show_prompt:
@@ -297,7 +297,7 @@ def main():
                         imagine=imagine
                     )
                     execution_time = (time.time() - start_time) * 1000
-                    print(f"Responded in {round(execution_time)}ms")
+                    print(f"{datetime.datetime.now().time()}: Responded in {round(execution_time)}ms")
 
                     answer += f"\n\n_I took {round(execution_time/1000,2)} seconds to respond_"
 
@@ -315,6 +315,14 @@ def main():
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(f"Line number of error: {exc_tb.tb_lineno}, in file {fname}")
+
+                # Return the answer back to the Slack channel
+                client.chat_postMessage(
+                    channel=channel_id,
+                    text=f"Sorry, something went wrong!\n\n{type(e).__name__} {e}",
+                    as_user=True,
+                    thread_ts=thread_ts
+                )
 
         # Start the slack client
         rtm_client = slack.RTMClient(token = slack_token)
