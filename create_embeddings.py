@@ -3,6 +3,7 @@ import pinecone
 import argparse
 import openai
 import pandas as pd
+from pprint import pprint
 
 # Create an ArgumentParser object
 parser = argparse.ArgumentParser()
@@ -17,11 +18,12 @@ parser.add_argument("--pinecone_namespace", default="content", help="Pinecone Na
 args = parser.parse_args()
 
 DOC_EMBEDDINGS_MODEL = "text-embedding-ada-002"
+EMBEDDING_BATCH_SIZE = 1000
 PINECONE_REGION="us-east1-gcp"
 PINECONE_DIMENSION_SIZE=1536
 PINECONE_METRIC="euclidean"
 PINECONE_POD_TYPE="p1"
-PINECONE_BATCH_SIZE = 10
+PINECONE_BATCH_SIZE = 100
 
 def load_content_dataframe(filename):
     df = pd.read_csv(filename)
@@ -32,16 +34,16 @@ def load_content_dataframe(filename):
     return df
 
 def get_embedding(text: str, model: str) -> list[float]:
-    result = openai.Embedding.create(
+    return openai.Embedding.create(
       model=model,
       input=text
     )
-    return result["data"][0]["embedding"]
 
 def get_doc_embedding(text: str) -> list[float]:
-    return get_embedding(text, DOC_EMBEDDINGS_MODEL)
+    result = get_embedding(text, DOC_EMBEDDINGS_MODEL)
+    return result["data"][0]["embedding"]
 
-def compute_doc_embeddings(df: pd.DataFrame) -> dict[tuple[str], list[float]]:
+def compute_doc_embeddings_old(df: pd.DataFrame) -> dict[tuple[str], list[float]]:
     """
     Create an embedding for each row in the dataframe using the OpenAI Embeddings API.
     
@@ -52,6 +54,27 @@ def compute_doc_embeddings(df: pd.DataFrame) -> dict[tuple[str], list[float]]:
         idx: get_doc_embedding(r.content.replace("\n", " ")) if isinstance(r.content, str) else ""
         for idx, r in df.iterrows()
     }
+
+def compute_doc_embeddings(df: pd.DataFrame) -> dict[tuple[str], list[float]]:
+    """
+    Create an embedding for each row in the dataframe using the OpenAI Embeddings API.
+    
+    Return a dictionary that maps between each embedding vector and the index of the row that it corresponds to.
+    """
+    print('Generating the embeddings...')
+    results = {}
+    batch_size = EMBEDDING_BATCH_SIZE
+    processed = 0
+    total = len(df)
+    for i in range(0, total, batch_size):
+        batch_rows = df[i:i+batch_size]
+        batch_texts = [r.content.replace("\n", " ") if isinstance(r.content, str) else "" for _, r in batch_rows.iterrows()]
+        batch_embeddings = get_embedding(batch_texts, DOC_EMBEDDINGS_MODEL)
+        for idx, embedding in zip(batch_rows.index, batch_embeddings["data"]):
+            results[idx] = embedding["embedding"]
+        processed += batch_size
+        print(f"Processed embeddings for {processed}/{total} rows")
+    return results
 
 # Function to generate CSV from dataframe
 def generate_csv_embeddings(embeddings_dict:dict[tuple[str], list[float]]):
@@ -64,7 +87,7 @@ def generate_csv_embeddings(embeddings_dict:dict[tuple[str], list[float]]):
 
     # Create a DataFrame from the list of tuples
     column_names = ['id'] + [i for i in range(len(list(embeddings_dict.values())[0]))]
-    return pd.DataFrame(context_embeddings_list, columns=column_names)
+    pd.DataFrame(context_embeddings_list, columns=column_names)
 
     # Save the DataFrame to a CSV file
     dict.to_csv(filename, index=False)
