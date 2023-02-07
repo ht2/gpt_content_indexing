@@ -181,9 +181,9 @@ def answer_question_with_context(
             print(f"\n\n{prompt}")
         
     if(print_question):
-        print(f"\n\nQuestion: {question}")
+        print(f"\n\n{datetime.datetime.now().time()}: Question: {question}")
 
-
+    print(f"{datetime.datetime.now().time()}: Sending Q to OpenAI...")
     response = openai.Completion.create(
         prompt=prompt,
         temperature= 1.0 if imagine else 0.0,
@@ -205,7 +205,7 @@ def answer_question_with_context(
             sys.stdout.flush()
     else:
         answer = response["choices"][0]["text"].strip(" \n")
-        print(f"Answer: {answer}")
+        print(f"{datetime.datetime.now().time()}: Answer: {answer}")
 
 def main():
     contentDir = args.dir.rstrip("/")
@@ -250,66 +250,77 @@ def main():
         # Listen for messages in Slack
         @slack.RTMClient.run_on(event='message')
         def respond_to_message(**payload):
-            data = payload['data']
+            try:
+                data = payload['data']
 
-            # Get the user's information from the Slack API
-            user_info = client.users_info(user=data['user'])
-            user_question = data['text']
-            thread_ts = data.get("ts")
+                # Check if the bot was mentioned and ensure it is not the bot talking to itself!
+                if 'bot_id' not in data and bot_id in data.get('text', ''):
+                    current_time = datetime.datetime.now().time()
+                    # Extract the username from the returned JSON object
+                    user_info = client.users_info(user=data['user'])
+                    username = user_info['user']['name']
 
-            # Check if the bot was mentioned and ensure it is not the bot talking to itself!
-            if 'bot_id' not in data and bot_id in data.get('text', ''):
-                current_time = datetime.datetime.now().time()
-                # Extract the username from the returned JSON object
-                username = user_info['user']['name']
-                print("------")
-                print(f"{datetime.datetime.now().time()}: User {username} asks \"{user_question}\"")
-                channel_id = data['channel']
-                # Allow some hallucinations if the CLI or user wants it
-                imagine = args.imagine or '[--imagine]' in data.get('text', '')
-                show_prompt = args.show_prompt or '[--show_prompt]' in data.get('text', '')
-                
-                holding_message = "Let me look that up for you! This might take a second..."
-                if imagine:
-                    holding_message += " (Imagine mode enabled!)"
-                if show_prompt:
-                    holding_message += " (Prompt enabled!)"
+                    # Get the user's information from the Slack API
+                    user_question = data['text']
+                    thread_ts = data.get("ts")
 
-                # Return a holding message back to the Slack thread
-                client.chat_postMessage(
-                    channel=channel_id,
-                    text=holding_message,
-                    as_user=True,
-                    thread_ts=thread_ts
-                )
+                    print("------")
+                    print(f"{datetime.datetime.now().time()}: User {username} asks \"{user_question}\"")
+                    channel_id = data['channel']
+                    # Allow some hallucinations if the CLI or user wants it
+                    imagine = args.imagine or '[--imagine]' in data.get('text', '')
+                    show_prompt = args.show_prompt or '[--show_prompt]' in data.get('text', '')
+                    
+                    holding_message = "Let me look that up for you! This might take a second..."
+                    if imagine:
+                        holding_message += " (Imagine mode enabled!)"
+                    if show_prompt:
+                        holding_message += " (Prompt enabled!)"
 
-                start_time = time.time()
-                answer = answer_question_with_context(
-                    question=user_question,
-                    df=df,
-                    embedding_type=embedding_type,
-                    content_embeddings=content_embeddings,
-                    show_prompt=show_prompt,
-                    print_question=False,
-                    return_answer=True,
-                    imagine=imagine
-                )
+                    # Return a holding message back to the Slack thread
+                    client.chat_postMessage(
+                        channel=channel_id,
+                        text=holding_message,
+                        as_user=True,
+                        thread_ts=thread_ts
+                    )
 
-                # Return the answer back to the Slack channel
-                client.chat_postMessage(
-                    channel=channel_id,
-                    text=answer,
-                    as_user=True,
-                    thread_ts=thread_ts
-                )
-                execution_time = (time.time() - start_time) * 1000
-                print(f"Responded in {round(execution_time)}ms")
+                    start_time = time.time()
+                    answer = answer_question_with_context(
+                        question=user_question,
+                        df=df,
+                        embedding_type=embedding_type,
+                        content_embeddings=content_embeddings,
+                        show_prompt=show_prompt,
+                        print_question=False,
+                        return_answer=True,
+                        imagine=imagine
+                    )
+                    execution_time = (time.time() - start_time) * 1000
+                    print(f"Responded in {round(execution_time)}ms")
+
+                    answer += f"\n\n_I took {round(execution_time/1000,2)} seconds to respond_"
+
+                    # Return the answer back to the Slack channel
+                    client.chat_postMessage(
+                        channel=channel_id,
+                        text=answer,
+                        as_user=True,
+                        thread_ts=thread_ts
+                    )
+            except Exception as e:
+                import traceback
+                print("exception caught:", e)
+                traceback.print_exc()
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(f"Line number of error: {exc_tb.tb_lineno}, in file {fname}")
 
         # Start the slack client
         rtm_client = slack.RTMClient(token = slack_token)
         rtm_client.start()
     else:
-        print('Answering question...')
+        print(f"{datetime.datetime.now().time()}: Answering question...")
         answer_question_with_context(
             question=args.question,
             df=df,
