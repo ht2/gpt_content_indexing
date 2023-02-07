@@ -145,10 +145,8 @@ def construct_prompt(
         else:
             header = "Answer the question as truthfully as possible using the provided context. You should use as much detail from the given context as possible when answering the question."
             header += "If the answer is not contained within the text below, say 'I don't know.' followed by the all the text in the 'Context' section, with their respective URLs (preceeded by 'Here is the closest information I could find to your question\\n\\n:'). "
-            header += "Within the context are URLs. If an answer if found within a relevant section, return the answer and then three line breaks and then the text 'More info:' followed by the URL."
+            header += "Within the context are URLs. If an answer if found within a relevant section, return the answer and then three line breaks and then the text 'More info:' followed by all the relevant URLs provided for the context, using bullet points to separate them."
         
-    header += ""
-
     header += "\n\nContext:\n"    
     header += "".join(chosen_sections) + "\n\n"
     header += "Q: " + question
