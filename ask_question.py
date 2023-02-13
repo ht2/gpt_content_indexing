@@ -22,6 +22,7 @@ parser.add_argument("--show_prompt", action=argparse.BooleanOptionalAction, help
 parser.add_argument("--imagine", action=argparse.BooleanOptionalAction, help="Don't restrict answers to be based from the provided context")
 parser.add_argument("--custom_model", default=False, help="Use the fine tuned model")
 parser.add_argument("--stream", action=argparse.BooleanOptionalAction, help="Stream out the response")
+parser.add_argument("--experiment_hyde", action=argparse.BooleanOptionalAction, help="Generate an answer from the question, and use that for embedding lookup (https://twitter.com/mathemagic1an/status/1615378778863157248/https://arxiv.org/pdf/2212.10496.pdf)")
 parser.add_argument("--custom_prompt", default=False, help="Inject a custom prompt infront of the context")
 
 parser.add_argument("--embedding_type", default="csv", choices=["csv", "pinecone"], help="Format to save embeddings in")
@@ -37,6 +38,10 @@ SEPARATOR = "\n* "
 
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 separator_len = len(tokenizer.tokenize(SEPARATOR))
+print(f"Length: {separator_len}")
+
+def timeprint(text):
+    print(f"{datetime.datetime.now().time()}: {text}")
 
 def get_embedding(text: str, model: str) -> list[float]:
     result = openai.Embedding.create(
@@ -45,8 +50,21 @@ def get_embedding(text: str, model: str) -> list[float]:
     )
     return result["data"][0]["embedding"]
 
-def get_question_embedding(text: str) -> list[float]:
-    return get_embedding(text, EMBEDDINGS_MODEL)
+def get_question_embedding(question: str) -> list[float]:
+    if args.experiment_hyde:
+        timeprint(f"Experimental HyDE mode activated. Fetching answer to Q: {question}")
+        prompt = f"Answer this question as well as you can. The answer will be used to generate embeddings and search for related answers in a contextual knowledge bank for the original question. Question: {question} Answer:"
+        response = openai.Completion.create(
+            prompt=question,
+            temperature= 0.0,
+            max_tokens=600,
+            model=COMPLETIONS_MODEL
+        )
+        answer = response["choices"][0]["text"].strip(" \n")
+        timeprint(f"Using generated answer for embeddings... {answer}")
+        return get_embedding(answer, EMBEDDINGS_MODEL)
+    else:
+        return get_embedding(question, EMBEDDINGS_MODEL)
 
 def load_embeddings(filename: str) -> dict[tuple[str], list[float]]:
     """
@@ -181,7 +199,7 @@ def answer_question_with_context(
     if(print_question):
         print(f"\n\n{datetime.datetime.now().time()}: Question: {question}")
 
-    print(f"{datetime.datetime.now().time()}: Sending Q to OpenAI...")
+    timeprint(f"Sending Q to OpenAI...")
     response = openai.Completion.create(
         prompt=prompt,
         temperature= 1.0 if imagine else 0.0,
@@ -203,7 +221,7 @@ def answer_question_with_context(
             sys.stdout.flush()
     else:
         answer = response["choices"][0]["text"].strip(" \n")
-        print(f"{datetime.datetime.now().time()}: Answer: {answer}")
+        timeprint(f"Answer: {answer}")
 
 def main():
     contentDir = args.dir.rstrip("/")
@@ -213,7 +231,10 @@ def main():
         print("Error: contents.csv must exist in the provided directory")
         sys.exit()
 
+
+    timeprint(f"Load contents.csv...")
     df = pd.read_csv(contentsFile)
+    timeprint(f"Loaded!")
     df = df.set_index(["id"])
 
     embedding_type = args.embedding_type
@@ -259,15 +280,23 @@ def main():
                     username = user_info['user']['name']
 
                     # Get the user's information from the Slack API
-                    user_question = data['text']
+                    question = data['text']
                     thread_ts = data.get("ts")
 
-                    print("------")
-                    print(f"{datetime.datetime.now().time()}: User {username} asks \"{user_question}\"")
                     channel_id = data['channel']
                     # Allow some hallucinations if the CLI or user wants it
                     imagine = args.imagine or '[--imagine]' in data.get('text', '')
                     show_prompt = args.show_prompt or '[--show_prompt]' in data.get('text', '')
+
+                    # Clean the question of any prompts
+                    question = question.replace("[--imagine]", "")
+                    question = question.replace("[--show_prompt]", "")
+                    question = question.strip()
+                    if question.endswith("?") == False:
+                        question = question + "?"
+
+                    print("------")
+                    timeprint(f"User {username} asks \"{question}\"")
                     
                     holding_message = "Let me look that up for you! This might take a few seconds..."
                     if imagine:
@@ -285,7 +314,7 @@ def main():
 
                     start_time = time.time()
                     answer = answer_question_with_context(
-                        question=user_question,
+                        question=question,
                         df=df,
                         embedding_type=embedding_type,
                         content_embeddings=content_embeddings,
@@ -295,7 +324,7 @@ def main():
                         imagine=imagine
                     )
                     execution_time = (time.time() - start_time) * 1000
-                    print(f"{datetime.datetime.now().time()}: Responded in {round(execution_time)}ms")
+                    timeprint(f"Responded in {round(execution_time)}ms")
 
                     answer += f"\n\n_I took {round(execution_time/1000,2)} seconds to respond_"
 
@@ -326,9 +355,15 @@ def main():
         rtm_client = slack.RTMClient(token = slack_token)
         rtm_client.start()
     else:
-        print(f"{datetime.datetime.now().time()}: Answering question...")
+        timeprint(f"Answering question...")
+
+        # Clean the question of any prompts
+        question = args.question.strip()
+        if question.endswith("?") == False:
+            question = question + "?"
+
         answer_question_with_context(
-            question=args.question,
+            question=question,
             df=df,
             embedding_type=embedding_type,
             content_embeddings=content_embeddings,
@@ -340,4 +375,5 @@ def main():
         exit()
 
 if __name__ == "__main__":
+    timeprint(f"Entry point")
     main()
