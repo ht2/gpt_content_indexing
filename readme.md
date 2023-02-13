@@ -99,6 +99,8 @@ Pass in a question using the `--question` flag
 
 `--imagine` can be used to provide a looser prompt
 
+`--experiment_hyde` can be used to enable Hypothetical Document Embeddings mode. This will generate a hypotethetical answer to the original question, and use the embeddings from that answer to search through the contents. Credit to https://arxiv.org/pdf/2212.10496.pdf via https://twitter.com/mathemagic1an/status/1615378778863157248
+
 `--stream` can be used to stream the output from GPT directly to the terminal in realtime
 
 
