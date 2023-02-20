@@ -9,6 +9,12 @@ FROM python:latest
 #Labels as key value pair
 LABEL Maintainer="jeremy.mindtools"
 
+ARG OPENAI_API_KEY 
+ARG CONFLUENCE_USERNAME
+ARG CONFLUENCE_API_KEY
+ARG CONFLUENCE_URL
+ARG CONFLUENCE_SPACE
+
 # Any working directory can be chosen as per choice like '/' or '/home' etc
 WORKDIR /usr/app/src
 
@@ -21,15 +27,15 @@ ADD requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 # get from https://platform.openai.com/account/api-keys
-ENV OPENAI_API_KEY=<your openAI API key goes here>
+ENV OPENAI_API_KEY=$OPENAI_API_KEY
 
 # get api key here https://id.atlassian.com/manage-profile/security/api-tokens
-ENV CONFLUENCE_USERNAME=<your atlassian login/email goes here>
-ENV CONFLUENCE_API_KEY=<your atlassian API key goes here>
+ENV CONFLUENCE_USERNAME=$CONFLUENCE_USERNAME
+ENV CONFLUENCE_API_KEY=$CONFLUENCE_API_KEY
 
 # use whatever values you want
-ENV CONFLUENCE_URL=https://emeraldworks.atlassian.net
-ENV CONFLUENCE_SPACE=buildChapter
+ENV CONFLUENCE_URL=$CONFLUENCE_URL
+ENV CONFLUENCE_SPACE=$CONFLUENCE_SPACE
 
 # missing dependency for python natural language thing
 RUN python -m nltk.downloader punkt

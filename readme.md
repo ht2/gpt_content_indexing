@@ -48,7 +48,13 @@ brew install docker
 ```
 From root dir build the docker image and have it index the content:
 ```bash
-docker image build -t gtp_experiment .
+docker image build \
+ --build-arg OPENAI_API_KEY=<value> \
+ --build-arg CONFLUENCE_USERNAME=<value> \
+ --build-arg CONFLUENCE_API_KEY=<value> \
+ --build-arg CONFLUENCE_URL=<value> \
+ --build-arg CONFLUENCE_SPACE=<value> \
+ -t gtp_experiment .
 ```
 Now run the image in a container and run the ask_question.py within the running container. NB the image now has the indexed content inside so we dont need to rebuild the content.
 ```bash
