@@ -36,7 +36,24 @@ Answer: No, if you delete all enrolments for a user, then the completions ARE NO
 
 ![image](https://user-images.githubusercontent.com/1352590/210773311-16b3a41d-11dc-48a6-9530-5ea0f2306f75.png)
 
-
+### Example running in docker
+Install Homebrew package manager:
+See https://brew.sh
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+Once you have homebrew install docker:
+```bash
+brew install docker
+```
+From root dir build the docker image and have it index the content:
+```bash
+docker image build -t gtp_experiment .
+```
+Now run the image in a container and run the ask_question.py within the running container. NB the image now has the indexed content inside so we dont need to rebuild the content.
+```bash
+docker run gtp_experiment python ask_question.py --question 'What are the outcomes of the brainstorm sessions?"'
+```
 ## Runtime example
 
 
