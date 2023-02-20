@@ -53,7 +53,8 @@ docker image build \
  --build-arg CONFLUENCE_USERNAME=<value> \
  --build-arg CONFLUENCE_API_KEY=<value> \
  --build-arg CONFLUENCE_URL=<value> \
- --build-arg CONFLUENCE_SPACE=<value> \
+ --build-arg CONFLUENCE_SPACE_KEY=<value> \
+ --build-arg CONFLUENCE_MAX_PAGES_TO_INDEX=<value> \
  -t gtp_experiment .
 ```
 Now run the image in a container and run the ask_question.py within the running container. NB the image now has the indexed content inside so we dont need to rebuild the content.

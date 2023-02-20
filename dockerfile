@@ -13,7 +13,8 @@ ARG OPENAI_API_KEY
 ARG CONFLUENCE_USERNAME
 ARG CONFLUENCE_API_KEY
 ARG CONFLUENCE_URL
-ARG CONFLUENCE_SPACE
+ARG CONFLUENCE_SPACE_KEY
+ARG CONFLUENCE_MAX_PAGES_TO_INDEX
 
 # Any working directory can be chosen as per choice like '/' or '/home' etc
 WORKDIR /usr/app/src
@@ -41,7 +42,7 @@ ENV CONFLUENCE_SPACE=$CONFLUENCE_SPACE
 RUN python -m nltk.downloader punkt
 
 #create and index the content to be ingested by the model
-RUN python ./index_content.py --spaces=$CONFLUENCE_SPACE --max_pages=20 --out ./output/default/contents.csv
+RUN python ./index_content.py --spaces=$CONFLUENCE_SPACE_KEY --max_pages=$CONFLUENCE_MAX_PAGES_TO_INDEX --out ./output/default/contents.csv
 RUN python ./create_embeddings.py --file ./output/default/contents.csv --out ./output/default/embeddings.csv
 
 #output env vars
