@@ -26,8 +26,8 @@ sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
 parser = argparse.ArgumentParser()
 
 # Add an argument with a flag and a name
-parser.add_argument("--spaces", nargs="*", default=["STRM"], help="Specify the Confluence Space you want to index")
-parser.add_argument("--zendesk", nargs="*", default=["learningpool"], help="Specify the Zendesk domains you want to index")
+parser.add_argument("--spaces", nargs="*", help="Specify the Confluence Space you want to index")
+parser.add_argument("--zendesk", nargs="*", help="Specify the Zendesk domains you want to index")
 parser.add_argument("--max_pages", default=1000, help="The maximum amount of Space pages to index")
 parser.add_argument("--out", default="./output/default/contents.csv", help="Specify the filename to save the content")
 parser.add_argument("--min_tokens", default=20, help="Remove content with less than this number of tokens")
@@ -40,7 +40,7 @@ max_pages = int(args.max_pages)
 pdf_content_fontsize = int(args.pdf_content_fontsize)
 
 # Connect to Confluence
-confluence = Confluence(url='https://learninglocker.atlassian.net', username=os.environ.get('CONFLUENCE_USERNAME'), password=os.environ.get('CONFLUENCE_API_KEY'))
+confluence = Confluence(url=os.environ.get('CONFLUENCE_URL'), username=os.environ.get('CONFLUENCE_USERNAME'), password=os.environ.get('CONFLUENCE_API_KEY'))
 
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
@@ -359,9 +359,12 @@ for space in args.spaces:
   print(f"INDEXING CONTENT FROM CONFLUENCE: {space}")
   res += extract_sections(space)
 
-for domain in args.zendesk:
-  print(f"INDEXING CONTENT FROM ZENDESK: {domain}.zendesk.com")
-  res += extract_zendesk_domain(domain)
+if args.zendesk is not None:
+  for domain in args.zendesk:
+    print(f"INDEXING CONTENT FROM ZENDESK: {domain}.zendesk.com")
+    res += extract_zendesk_domain(domain)
+else:
+  print(f"NO CONTENT FROM ZENDESK TO INDEX")
 
 if os.path.isdir(args.input):
   for subdir, dirs, files in os.walk(args.input):

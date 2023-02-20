@@ -87,10 +87,10 @@ def generate_csv_embeddings(embeddings_dict:dict[tuple[str], list[float]]):
 
     # Create a DataFrame from the list of tuples
     column_names = ['id'] + [i for i in range(len(list(embeddings_dict.values())[0]))]
-    pd.DataFrame(context_embeddings_list, columns=column_names)
+    df = pd.DataFrame(context_embeddings_list, columns=column_names)
 
     # Save the DataFrame to a CSV file
-    dict.to_csv(filename, index=False)
+    df.to_csv(filename, index=False)
     print(f"Done! Saved to {filename}")
 
 def find_or_create_index(index_name:str, namespace:str, recreate_index:bool=False):
