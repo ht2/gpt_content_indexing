@@ -38,6 +38,7 @@ parser.add_argument("--pdf_content_fontsize", default=12, help="Content greater 
 args = parser.parse_args()
 max_pages = int(args.max_pages)
 pdf_content_fontsize = int(args.pdf_content_fontsize)
+min_tokens = int(args.min_tokens)
 
 # Connect to Confluence
 confluence = Confluence(url='https://learninglocker.atlassian.net', username=os.environ.get('CONFLUENCE_USERNAME'), password=os.environ.get('CONFLUENCE_API_KEY'))
@@ -137,10 +138,9 @@ def count_content_tokens(
   ncontent_ntokens = [
       count_tokens(c) # Add the tokens from the content
       + 4
-      + count_tokens(" ".join(id.split(" ")[1:-1])) # Add the tokens from the headings
-      + count_tokens(" ".join(u.split(" ")[1:-1])) # Add the tokens from the url
+      + count_tokens(" ".join(id.split(" ")[1:-1])) # Add the tokens from the uuids
       - (1 if len(c) == 0 else 0)
-      for id, c, u in zip(nuuids, nurls, ncontents)
+      for id, c in zip(nuuids, ncontents)
   ]
   # Create a tuple of (title, section_name, content, number of tokens)
   outputs = []
@@ -319,7 +319,7 @@ def index_pdf_content(subdir, file):
                             is_heading = False
                             for char in text_line:
                                 if isinstance(char, LTChar):
-                                    fontsize = char.matrix[3]
+                                    fontsize = char.size
                                     if fontsize > pdf_content_fontsize:
                                         is_heading = True
                                         break
@@ -375,7 +375,7 @@ if os.path.isdir(args.input):
   
 # Remove rows with less than 40 tokens
 df = pd.DataFrame(res, columns=["id", "url", "content", "tokens"])
-df = df[df.tokens > args.min_tokens]
+df = df[df.tokens > min_tokens]
 df = df.drop_duplicates(['id'])
 df = df.reset_index().drop('index',axis=1) # reset index
 print(df.head())

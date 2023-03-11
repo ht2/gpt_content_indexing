@@ -132,7 +132,7 @@ def generate_pinecone_embeddings(embeddings_dict:dict[tuple[str], list[float]]):
     pinecone.init(api_key=os.environ.get('PINECONE_API_KEY'), environment=PINECONE_REGION)
     index = find_or_create_index(index_name, namespace, recreate_index)
 
-    print('Inseting vectors...')
+    print('Inserting vectors...')
     vectors = []
     for i, (id, embedding) in enumerate(embeddings_dict.items()):
         vectors.append((id, embedding, {}))
