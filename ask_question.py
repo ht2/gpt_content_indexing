@@ -81,7 +81,7 @@ def get_question_embedding(question: str) -> list[float]:
             prompt=prompt,
             temperature= 0.0,
             max_tokens=args.max_tokens,
-            model=COMPLETIONS_MODEL
+            model=args.text_model,
         )
         answer = response["choices"][0]["text"].strip(" \n")
         timeprint(f"Using generated answer for embeddings... {answer}")
