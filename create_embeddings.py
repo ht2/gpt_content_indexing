@@ -29,7 +29,13 @@ def load_content_dataframe(filename):
     df = pd.read_csv(filename)
     df = df.set_index(["id"])
     print(f"{len(df)} rows in the data.")
-    sample = df.sample(5)
+
+    # drop rows with empty content
+    df = df.dropna(subset=["content"])
+    print(f"{len(df)} rows with content.")
+
+    sampleSize = 5 if len(df) >=5 else len(df)
+    sample = df.sample(sampleSize)
     print("Sample (5 rows)", sample)
     return df
 
@@ -68,7 +74,7 @@ def compute_doc_embeddings(df: pd.DataFrame) -> dict[tuple[str], list[float]]:
     total = len(df)
     for i in range(0, total, batch_size):
         batch_rows = df[i:i+batch_size]
-        batch_texts = [r.content.replace("\n", " ") if isinstance(r.content, str) else "" for _, r in batch_rows.iterrows()]
+        batch_texts = [r.content.replace("\n", " ") if isinstance(r.content, str) and r.content != "" else "" for _, r in batch_rows.iterrows()]
         batch_embeddings = get_embedding(batch_texts, DOC_EMBEDDINGS_MODEL)
         for idx, embedding in zip(batch_rows.index, batch_embeddings["data"]):
             results[idx] = embedding["embedding"]

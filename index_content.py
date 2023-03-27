@@ -349,6 +349,23 @@ def index_pdf_content(subdir, file):
 
     return count_content_tokens(nuuids, ncontents, nurls)
 
+
+def index_txt_content(dir_path, file, max_chars=500):
+    nuuids, ncontents, nurls = [], [], []
+    filepath = os.path.join(dir_path, file)
+    with open(filepath, 'r', encoding='utf-8') as txt_file:
+        content = txt_file.read()
+        blocks = [content[i:i+max_chars] for i in range(0, len(content), max_chars)]
+        
+        for block in blocks:
+            nuuids.append(str(uuid.uuid4()))
+            ncontents.append(block)
+            nurls.append(file)
+    return count_content_tokens(nuuids, ncontents, nurls)
+        
+
+
+
 # Define the maximum number of tokens we allow per row
 max_len = 1500
 
@@ -370,6 +387,8 @@ if os.path.isdir(args.input):
         res += extract_csvfile(subdir, file)
       elif file.endswith(".pdf"):
         res += index_pdf_content(subdir, file)
+      elif file.endswith(".txt"):
+        res += index_txt_content(subdir, file)
 
 
   
@@ -381,5 +400,5 @@ df = df.reset_index().drop('index',axis=1) # reset index
 print(df.head())
 
 # Store the content to a CSV
-df.to_csv(args.out, index=False)
+df.to_csv(args.out, index=False, escapechar='\\')
 print(f"Done! File saved to {args.out}")
