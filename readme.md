@@ -1,12 +1,12 @@
 # Content indexing & embeddings for Q&A through GPT3
 
-**The aim of this project is to provide a naturally queryable knowledge base using an indexed set of content from files, Confluence and Zendesk alongside GPT3 models.**
+Welcome to our open source repo that provides an interface to query knowledge bases using an indexed set of content from various sources such as files, Confluence, and Zendesk using GPT3/4 models.
 
-We will accomplish this by fetching all the content from a given directory, Confluence spaces and Zendesk domain and indexing the content found within the subheadings in each page of the Space/Domain into a CSV. The CSV can then be parsed through the OpenAI embeddings model to provide vector scores across all of the contexts.
+Our system fetches all the content from a given directory, Confluence spaces, and Zendesk domain and indexes the content found within the subheadings in each page of the Space/Domain into a CSV. The CSV is then parsed through the OpenAI embeddings model to provide vector scores across all of the contexts.
 
-Once we have an embeddings database of the content, we can then use an embeddings compare search to retrieve the best context for a given question, and use this as the context when submitting a question to the GPT-3 model. Further work can then be done to allow the script and indexed content to be accessible through interfaces such as Slack.
+With our embeddings database of the content, we can use an embeddings compare search to retrieve the best context for a given question and use this context when submitting a question to OpenAI models.
 
-## Example use case
+## Example Use Case
 
 Imagine a user posing the question:
 
@@ -36,98 +36,110 @@ Answer: No, if you delete all enrolments for a user, then the completions ARE NO
 
 ![image](https://user-images.githubusercontent.com/1352590/210773311-16b3a41d-11dc-48a6-9530-5ea0f2306f75.png)
 
+---
+## index_content.py - Generate CSV of Spaces, Zendesk, and Custom CSV Content
 
-## Runtime example
-
-
-### Generate CSV of Spaces, Zendesk and custom CSV content
+Use this script to generate a CSV file of Confluence Spaces, Zendesk content, and custom CSV content. By default, the script saves the output to `./output/default/contents.csv`. You can specify a different output file using the `--out` flag.
 
 #### Example:
-> Execute [index_content.py](index_content.py) to generate a CSV of content from the first 10 pages of both STRM and LL spaces in `./defaults/output/contents.csv` and all the content from the learningpool.zendesk.com domain
 
 ```bash
 python index_content.py --spaces=STRM LL --max_pages=10 --zendesk learningpool --out ./output/default/contents.csv
 ```
 
-`--spaces` Space separated list of Confluence Spaces to index. Not required; defaults to `STRM`
+#### Arguments
 
-`--zendesk` Configure the zendesk domain to pull content from. Not required; defaults to `learningpool`
+- `--spaces`: A space-separated list of Confluence Spaces to index. You can specify multiple spaces by separating them with a space. Defaults to `["STRM"]`.
+- `--zendesk`: A list of Zendesk domains to index. You can specify multiple domains by separating them with a space. Defaults to `["learningpool"]`.
+- `--max_pages`: The maximum number of pages to index per Confluence Space. Defaults to `1000`.
+- `--out`: The name of the output file. Defaults to `./output/default/contents.csv`.
+- `--min_tokens`: The minimum number of tokens that a given bit of content must have before it is included in the output file. Defaults to `20` (approximately 60 characters).
 
-`--out` specify the output file. Not required; defaults to `./output/defauilt/contents.csv`
+#### CSV Import
 
-`--max_pages` Max pages pulled per Confluence space. Not required; defaults to 1000. Recommend using low numbers for initial testing
-
-`--min_tokens` Minimum tokens in a given bit of content before it is excluded. Defaults to 20 (approx 60 characters)
-
-#### CSV import
-
-For CSVs included in the csv_input directory, they will be iterated over and imported. 
+For CSVs included in the `csv_input` directory, they will be iterated over and imported.
 
 Content can now be imported from files using the following options:
 
-`--input` is not required; defaults to `./input`. Points to a folder to ingest CSVs from. Rows should be in the format 'heading,answers,answers,...'
+- `--input`: The folder to ingest CSVs from. Defaults to `./input`. Rows should be in the format `heading,answers,answers,...`.
+- `--use_csv_dirs`: If `True`, use the folder structure (`./input/product/area.csv`) to prefill the title (e.g. "product") and subtitle (e.g. "area") for imported CSVs. Otherwise, prompts for each file found. Defaults to `False`.
 
-`--use_csv_dirs` is not required; defaults to False. If True, uses the folder structure (./input/product/area.csv) to prefill the title (e.g. product) and subtitle (e.g. area) for imported CSVs. Otherwise prompts for each file found
+#### Example:
 
-### Generate embeddings from output file
+```bash
+python index_content.py --input ./input --use_csv_dirs
+```
 
-Outputs embeddings to a file in `./default/output/embeddings.csv`
+**Note:** If you specify both `--input` and `--spaces`/`--zendesk` arguments, the script will include content from both sources in the output file. Use the `--use_csv_dirs` flag if you want to use the folder structure to group content.
+
+
+---
+
+## create_embeddings.py - Generate Embeddings from Output File
+
+Use this script to generate embeddings from an input CSV file. By default, the script outputs embeddings to a file in `./default/output/embeddings.csv`. You can specify a different output file using the `--out` flag.
+
+#### Example:
+
 ```bash
 python create_embeddings.py --file ./output/default/contents.csv --out ./output/default/embeddings.csv
 ```
 
-`--file` is not required; defaults to `./output/defaults/contents.csv`
+#### Arguments
 
-`--out` is not required; defaults to `./output/default/embeddings.csv`
+- `--file`: The path to the input CSV file. Defaults to `./output/default/contents.csv`.
+- `--embedding_type`: The format to save embeddings in. You can choose between `csv` and `pinecone`. Defaults to `csv`.
+- `--out`: The name of the output file. Defaults to `./output/default/embeddings.csv`.
+- `--pinecone_mode`: The mode to upsert or replace embeddings in a Pinecone index. You can choose between `upsert` and `replace`. Defaults to `replace`.
+- `--pinecone_index`: The name of the Pinecone index to use. Defaults to `default`.
+- `--pinecone_namespace`: The name of the Pinecone namespace to use. Defaults to `content`.
+
+**Note:** If you choose `pinecone` as the `--embedding_type`, you must specify `--pinecone_index` and `--pinecone_namespace` arguments. 
+
+#### Example:
+
+```bash
+python create_embeddings.py --file ./output/default/contents.csv --embedding_type pinecone --pinecone_index my_index --pinecone_namespace my_namespace
+```
 
 
-### Ask it a question!
+---
 
-`--dir` is not required. It defaults to the ./output/default/ directory.
-Inside here it will look for a contents.csv and embeddings.csv
+## ask_question.py - Ask a question
 
-#### Direct Q&A  mode
+You can use this script to get an answer to your question. By default, it looks for a directory named `./output/default/` and loads `contents.csv` and `embeddings.csv` from there. You can specify a different directory using the `--dir` flag.
+
 ```bash
 python ask_question.py --question "How much does an elephant weigh?"
 ```
 
-Pass in a question using the `--question` flag
+#### Arguments
 
-`--embeddings` is not required; defaults to `embeddings` and loads `./output/embeddings.csv`
+- `--question`: Specify the question you want to ask.
+- `--dir`: Specify the directory containing the `contents.csv` and `embeddings.csv` files. Defaults to `./output/default/`.
+- `--debug`: Enable debug mode (show prompts and other info).
+- `--imagine`: Don't restrict answers to be based from the provided context.
+- `--show_prompt`: Show the full prompt used to generate the answer.
+- `--stream`: Stream the output from GPT directly to the terminal in real-time.
+- `--experiment_hyde`: Generate an answer from the question and use that for embedding lookup. This mode is based on Hypothetical Document Embeddings and generates a hypothetical answer to the original question, which is then used to search through the contents. Credit to https://arxiv.org/pdf/2212.10496.pdf via https://twitter.com/mathemagic1an/status/1615378778863157248.
+- `--custom_instructions`: Inject a custom set of instructions before the context.
 
-`--show_prompt` can be used to output the full prompt used to answer the question
+#### Embedding Options
 
-`--imagine` can be used to provide a looser prompt
+- `--embedding_type`: Format to save embeddings in. You can choose between `csv` and `pinecone`.
+- `--pinecone_index`: The Pinecone index to use.
+- `--pinecone_namespace`: The Pinecone namespace to use.
+- `--pinecone_top_k`: The number of results to return from the Pinecone index.
 
-`--experiment_hyde` can be used to enable Hypothetical Document Embeddings mode. This will generate a hypotethetical answer to the original question, and use the embeddings from that answer to search through the contents. Credit to https://arxiv.org/pdf/2212.10496.pdf via https://twitter.com/mathemagic1an/status/1615378778863157248
+#### Completion Options
 
-`--stream` can be used to stream the output from GPT directly to the terminal in realtime
+- `--completion_type`: The type of completion to use. You can choose between `text` and `chat`. For best results, use chat with the `gpt-4` model.
+- `--text_model`: The text completions model to use. Defaults to `text-davinci-003`.
+- `--chat_model`: The chat completions model to use. Defaults to `gpt-4`.
+- `--max_tokens`: The maximum number of tokens to generate. Defaults to `600`.
+- `--max_context`: The maximum length of content to include. Defaults to `1000`.
 
-
-#### Slack listening mode
-
-The script can be configured to listen to all messages mentioning to a Slack bot/user and reply in the thread to the user. It uses the Real Time Messaging (RTM) Slack client to listen to all incoming messages connected to the bot and replies directly to the thread of the message where the bot is @mentioned.
-
-![image](https://user-images.githubusercontent.com/1352590/215913846-78bce62e-7d05-4eb4-ab7b-7f9022f955cc.png)
-
-You will need to configure a bot with the `bot` and `chat:wrute:bot` scopes. Note that the `bot` scope is deprecated but is the the recommended approach for RTM clients. More info: https://api.slack.com/rtm
-
-
-Ensure you have the bot's Oauth key configured as `SLACK_BOT_API_KEY` and the bot's ID in `SLACK_BOT_ID`.
-
-To start the script in Slack listening mode, use...
-
-```bash
-python ask_question.py --slack
-```
-![image](https://user-images.githubusercontent.com/1352590/215914960-5ff85070-2af2-4243-ba9a-6d01117efa9d.png)
-
-The user may add additional comands to their question in Slack:
-
-`[--show_prompt]`: Returns the full prompt to the user
-
-`[--imagine]`: Enables the hallucination mode (looser prompts)
-
+---
 
 ## Requirements
 
@@ -148,6 +160,7 @@ The script uses the Atlassian API to fetch pages from Confluence. Ensure the fol
 
 Instructions on generating a Confluence API token: https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/
 
+---
 
 ## Todo
 
@@ -164,21 +177,19 @@ Instructions on generating a Confluence API token: https://support.atlassian.com
 - [x] Create script to take input question from user and return a useful answer!
   - Search indexed content using question's embedding and select most similar content
   - Apply it as context back to GPT3 (davinci?) alongside original question to attempt to answer from knowledge base
-- [x] Create a Slack bot that can take a question, feed it to the script and return the answer
-  - [ ] Rewrite the Slack bot to a more modern protocol (e.g websocket)
-  - [ ] Provide an endpoint version for AWS Lambda/API Gateway
-- [ ] Utilise a Vector Database
+- [x] Utilise a Vector Database
+- [x] Implement Chat Completions API (GPT-4 compatibility)
 
 #### Stretch goals
 
 - [x] Index multiple spaces into single embeddings database
-- [ ] Index other knowledge sources
-  - [ ] Slack support channels
+- [x] Index other knowledge sources
   - [x] Academy: https://learningpool.zendesk.com/api/v2/help_center/en-us/articles.csv
   - [x] CSV
   - [x] PDF
-- [ ] Fine tune model rather than just finding and providing context (although this is still a recommended approach)
+  - [x] TXT
 
+---
 
 ## Known issues and workarounds
 
