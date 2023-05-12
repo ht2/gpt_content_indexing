@@ -31,7 +31,7 @@ parser.add_argument("--zendesk", nargs="*", default=["learningpool"], help="Spec
 parser.add_argument("--max_pages", default=1000, help="The maximum amount of Space pages to index")
 parser.add_argument("--out", default="./output/default/contents.csv", help="Specify the filename to save the content")
 parser.add_argument("--min_tokens", default=20, help="Remove content with less than this number of tokens")
-parser.add_argument("--input", default="./input", help="Folder to ingest CSVs from. Rows should be in the format 'heading,answers,answers,...'")
+parser.add_argument("--input", default=False, help="Folder to ingest CSVs from. Rows should be in the format 'heading,answers,answers,...'")
 parser.add_argument("--use_dirs", action=argparse.BooleanOptionalAction, help="Use the folder structure (./product/area.csv)")
 parser.add_argument("--pdf_content_fontsize", default=12, help="Content greater than this fontsize will be considered as a header")
 

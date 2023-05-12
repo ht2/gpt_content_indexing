@@ -23,7 +23,7 @@ parser.add_argument("--stream", action=argparse.BooleanOptionalAction, help="Str
 parser.add_argument("--experiment_hyde", action=argparse.BooleanOptionalAction, help="Generate an answer from the question, and use that for embedding lookup (https://twitter.com/mathemagic1an/status/1615378778863157248/https://arxiv.org/pdf/2212.10496.pdf)")
 parser.add_argument("--custom_instructions", default=False, help="Inject a custom set of instructions before the context")
 
-parser.add_argument("--embedding_type", default="csv", choices=["csv", "pinecone"], help="Format to save embeddings in")
+parser.add_argument("--embedding_type", default="pinecone", choices=["csv", "pinecone"], help="Format to save embeddings in")
 parser.add_argument("--pinecone_index", default="default", help="Pinecone Index")
 parser.add_argument("--pinecone_namespace", default="content", help="Pinecone Namespace")
 parser.add_argument("--pinecone_top_k", default=10, type=int, help="The number of results to return from the Pinecone index")
