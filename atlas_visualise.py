@@ -59,13 +59,19 @@ descriptions = []
 for i in range(0, len(all_data), 100):
     pprint(f"{datetime.now().strftime('%H:%M:%S')} - Fetching batch of IDs from {i} to {i+100}")
     batch_data = all_data[i:i+100]
+    j = 0
     for d in batch_data:
         result = index.fetch(ids=[d['id']], **query_params)
         for id, vector in result['vectors'].items():
-            ids.append(id)
-            embeddings.append(vector['values'])
-            description = get_brief_description(d['content'])
-            descriptions.append(description)
+            try:
+                description = get_brief_description(d['content'])
+                ids.append(id)
+                embeddings.append(vector['values'])
+                descriptions.append(description)
+            except Exception as e:
+                print(f"Error message: {str(e)}")
+        j = j + 1
+        print(f'Progress: {j}% {"." * j}', end='\r')
 
 pprint(f"{datetime.now().strftime('%H:%M:%S')} - Fetched {len(embeddings)} vectors")
 
