@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser()
 
 # Add an argument with a flag and a name
 parser.add_argument("--file", default="./output/default/contents.csv", help="Specify the path to the CSV")
-parser.add_argument("--embedding_type", default="csv", choices=["csv", "pinecone"], help="Format to save embeddings in")
+parser.add_argument("--embedding_type", default="pinecone", choices=["csv", "pinecone"], help="Format to save embeddings in")
 parser.add_argument("--out", default="./output/default/embeddings.csv", help="Specify the filename to save the embeddings")
 parser.add_argument("--pinecone_mode", default="replace", choices=["upsert", "replace"], help="Specify the mode to upsert or replace embeddings in Pinecone index")
 parser.add_argument("--pinecone_index", default="default", help="Pinecone Index")

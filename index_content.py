@@ -237,17 +237,16 @@ def extract_csvfile(subdir, file):
     file_name = os.path.splitext(file)[0]
     
     print(f"Loading data from {csv_filepath}, subdir: {subdir_name}")
-
-    if args.use_dirs == False:
+    if args.use_dirs == True:
+      product = subdir_name
+      product_area = file_name
+    else:
       product = input(f"Please enter the product NAME for this file (default: {subdir_name}): ")
       if not product:
         product = subdir_name
       product_area = input(f"Please enter the product AREA for this file (default: {file_name}): ")
       if not product_area:
         product_area = file_name
-    else:
-      product = subdir_name
-      product_area = file_name
     
     title = f"{product} - {product_area}"
 
