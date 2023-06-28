@@ -43,7 +43,7 @@ def get_brief_description(text):
         model="gpt-3.5-turbo-0613",
         messages=[
             {"role": "user", "content": text},
-            {"role": "system", "content": "Describe this training in two to five words, followed by the URL to the content:"}
+            {"role": "system", "content": "Summarise this with a single word, and then with up to ten words of description."}
         ],
         temperature=0.5,
         max_tokens=100
@@ -54,6 +54,8 @@ def get_brief_description(text):
 ids = []
 embeddings = []
 descriptions = []
+contents = []
+urls = []
 
 # Fetch vectors for the IDs in batches of 100
 for i in range(0, len(all_data), 100):
@@ -68,6 +70,8 @@ for i in range(0, len(all_data), 100):
                 ids.append(id)
                 embeddings.append(vector['values'])
                 descriptions.append(description)
+                contents.append(d['content'])
+                urls.append(d['url'])
             except Exception as e:
                 print(f"Error message: {str(e)}")
         j = j + 1
@@ -78,7 +82,7 @@ pprint(f"{datetime.now().strftime('%H:%M:%S')} - Fetched {len(embeddings)} vecto
 embeddings = np.array(embeddings)
 
 # prepare data for atlas.map_embeddings
-data = [{'id': id, 'description': desc} for id, desc in zip(ids, descriptions)]
+data = [{'id': id, 'description': desc, 'content': content, 'url': url} for id, desc, content, url in zip(ids, descriptions, contents, urls)]
 
 pprint(f"{datetime.now().strftime('%H:%M:%S')} - Pushing embeddings to Atlas")
 atlas.map_embeddings(embeddings=embeddings, data=data, id_field='id')
