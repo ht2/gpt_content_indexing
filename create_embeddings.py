@@ -40,14 +40,13 @@ def load_content_dataframe(filename):
     return df
 
 def get_embedding(text: str, model: str) -> list[float]:
-    return openai.Embedding.create(
+    return openai.embeddings.create(
       model=model,
       input=text
     )
 
 def get_doc_embedding(text: str) -> list[float]:
-    result = get_embedding(text, DOC_EMBEDDINGS_MODEL)
-    return result["data"][0]["embedding"]
+    return get_embedding(text, DOC_EMBEDDINGS_MODEL).data[0].embedding
 
 def compute_doc_embeddings_old(df: pd.DataFrame) -> dict[tuple[str], list[float]]:
     """
@@ -76,8 +75,8 @@ def compute_doc_embeddings(df: pd.DataFrame) -> dict[tuple[str], list[float]]:
         batch_rows = df[i:i+batch_size]
         batch_texts = [r.content.replace("\n", " ") if isinstance(r.content, str) and r.content != "" else "" for _, r in batch_rows.iterrows()]
         batch_embeddings = get_embedding(batch_texts, DOC_EMBEDDINGS_MODEL)
-        for idx, embedding in zip(batch_rows.index, batch_embeddings["data"]):
-            results[idx] = embedding["embedding"]
+        for idx, response in zip(batch_rows.index, batch_embeddings.data):
+            results[idx] = response.embedding
         processed += batch_size
         print(f"Processed embeddings for {processed}/{total} rows")
     return results

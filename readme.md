@@ -134,8 +134,7 @@ python ask_question.py --question "How much does an elephant weigh?"
 #### Completion Options
 
 - `--completion_type`: The type of completion to use. You can choose between `text` and `chat`. For best results, use chat with the `gpt-4` model.
-- `--text_model`: The text completions model to use. Defaults to `text-davinci-003`.
-- `--chat_model`: The chat completions model to use. Defaults to `gpt-4`.
+- `--chat_model`: The chat completions model to use. Defaults to `gpt-4-1106-preview`.
 - `--max_tokens`: The maximum number of tokens to generate. Defaults to `600`.
 - `--max_context`: The maximum length of content to include. Defaults to `1000`.
 

@@ -28,27 +28,19 @@ parser.add_argument("--pinecone_index", default="default", help="Pinecone Index"
 parser.add_argument("--pinecone_namespace", default="content", help="Pinecone Namespace")
 parser.add_argument("--pinecone_top_k", default=10, type=int, help="The number of results to return from the Pinecone index")
 
-parser.add_argument("--completion_type", default="text", choices=["text", "chat"], help="Pinecone Namespace")
-parser.add_argument("--text_model", default="text-davinci-003", help="The text completions model to use (defaults to text-davinci-003)")
-parser.add_argument("--chat_model", default="gpt-4", help="The chat completions model to use (defaults to gpt-4)")
+parser.add_argument("--chat_model", default="gpt-4-1106-preview", help="The chat completions model to use (defaults to gpt-4-1106-preview)")
 parser.add_argument("--max_tokens", default=600, type=int, help="The maximum number of tokens to generate (defaults to 600)")
 parser.add_argument("--max_context", default=1000, type=int, help="The maximum length of content to include (defaults to 1000)")
 
 args = parser.parse_args()
 
-if args.completion_type == "text":
-    COMPLETIONS_MODEL = args.text_model
-elif args.completion_type == "chat":
-    COMPLETIONS_MODEL = args.chat_model
-else:
-    raise ValueError("Invalid completion_type")
+COMPLETIONS_MODEL = args.chat_model
 
 def timeprint(text):
     print(f"{datetime.datetime.now().time()}: {text}")
 
 if args.debug:
     timeprint("Debug mode enabled.")
-    timeprint(f"Completions mode: {args.completion_type}")
     timeprint(f"Model: {COMPLETIONS_MODEL}")
     timeprint(f"Max tokens: {args.max_tokens}")
     timeprint(f"Max context: {args.max_context}")
@@ -67,23 +59,25 @@ SEPARATOR_LEN = 3
 
 
 def get_embedding(text: str, model: str) -> list[float]:
-    result = openai.Embedding.create(
+    response = openai.embeddings.create(
       model=model,
       input=text
     )
-    return result["data"][0]["embedding"]
+    return response.data[0].embedding
 
 def get_question_embedding(question: str) -> list[float]:
     if args.experiment_hyde:
         timeprint(f"Experimental HyDE mode activated. Fetching answer to Q: {question}")
-        prompt = f"Answer this question as well as you can. The answer will be used to generate embeddings and search for related answers in a contextual knowledge bank for the original question. Question: {question} Answer:"
-        response = openai.Completion.create(
-            prompt=prompt,
-            temperature= 0.0,
-            max_tokens=args.max_tokens,
-            model=args.text_model,
+        completion = openai.chat.completions.create(
+            model=args.chat_model,
+            messages=[
+                {"role":"system", "content": "You are a helpful agent designed to answer the user's question to the best of your abilities. The answer you give will then be used to generate embeddings and search for related answers in a contextual knowledge bank for the original question."},
+                {"role":"user", "content": question}
+            ],
+            temperature=0.0,
+            max_tokens=600,
         )
-        answer = response["choices"][0]["text"].strip(" \n")
+        answer = completion.choices[0].message.content
         timeprint(f"Using generated answer for embeddings... {answer}")
         return get_embedding(answer, EMBEDDINGS_MODEL)
     else:
@@ -197,31 +191,6 @@ def get_system_instructions():
     return prompt
 
 
-def call_text_completion(question, context):
-    """
-    Call the OpenAI Text completion API to generate an answer to the question.
-    """
-    prompt = get_system_instructions()
-    prompt+= "\n\n"
-    prompt+= f"Context:\n{context}"
-    prompt+= "\n\n"
-    prompt+= f"Question: {question}"
-
-    if args.show_prompt:
-        timeprint(f"Prompt: {prompt}")
-    
-    try:
-        return openai.Completion.create(
-            prompt=prompt,
-            temperature= 1.0 if args.imagine else 0.0,
-            max_tokens=args.max_tokens,
-            model=COMPLETIONS_MODEL,
-            stream=args.stream
-        )
-    except Exception as e:
-        print("Error: ", e)
-        exit(1)
-
 
 def call_chat_completion(question, context):
     """
@@ -244,7 +213,7 @@ def call_chat_completion(question, context):
         timeprint(f"User Role Content: {user_role_content}")
     
     try:
-        return openai.ChatCompletion.create(
+        return openai.chat.completions.create(
             model=COMPLETIONS_MODEL,
             messages=[
                 {"role":"system", "content": system_role_content},
@@ -262,38 +231,22 @@ def answer_question(
     question:str,
     context:str
 ) -> str:
-    if args.debug:
-        timeprint(f"Using {args.completion_type} completion type")
-
-    if args.completion_type == "text":
-        response = call_text_completion(question, context)
-    elif args.completion_type == "chat":
-        response = call_chat_completion(question, context)
-    else:
-        timeprint("Invalid completion type")
-        exit(1)
+    completion = call_chat_completion(question, context)
 
     print(f"\nQuestion: {question}\n")
     if (args.stream == True):
         sys.stdout.write('Answer: ')
         sys.stdout.flush()
-        for chunk in response:
-            if args.completion_type == "text":
-                sys.stdout.write(chunk.choices[0]['text'])
+        for chunk in completion:
+            # Stream out the generated text for each completion
+            for choice in chunk.get('choices', []):
+                delta = choice.get('delta', {})
+                content = delta.get('content', '')
+                sys.stdout.write(content)
                 sys.stdout.flush()
-            else:
-                # Stream out the generated text for each completion
-                for choice in chunk.get('choices', []):
-                    delta = choice.get('delta', {})
-                    content = delta.get('content', '')
-                    sys.stdout.write(content)
-                    sys.stdout.flush()
         sys.stdout.write('\n\n')
     else:
-        if args.completion_type == "text":
-            print("Answer: ", response['choices'][0]['text'])
-        else:
-            print("Answer: ", response['choices'][0]['message']['content'])
+        print("Answer: ", completion.choices[0].message.content)
 
 
 def main():
